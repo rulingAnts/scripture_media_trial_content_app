@@ -1,0 +1,41 @@
+{
+  "name": "scripture-media-desktop-app",
+  "version": "1.0.0",
+  "description": "Desktop app for creating Scripture Media bundles",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "electron": "^25.0.0",
+    "@scripture-media/shared": "file:../shared",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.scripture.media.bundler",
+    "productName": "Scripture Media Bundler",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
