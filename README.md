@@ -91,10 +91,20 @@ npm run android
 
 ## Documentation
 
+### Getting Started
+- **[QUICKSTART.md](QUICKSTART.md)** - Get up and running in 5-10 minutes
 - **[SETUP.md](SETUP.md)** - Complete setup and installation guide
 - **[USAGE.md](USAGE.md)** - How to use the desktop and mobile apps
+
+### Technical Documentation
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design and technical details
 - **[SECURITY.md](SECURITY.md)** - Security analysis and best practices
+
+### Reference
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+- **[examples/](examples/)** - Example bundle configurations
 
 ## Workflow Overview
 
