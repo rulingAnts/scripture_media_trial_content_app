@@ -1,0 +1,12 @@
+{
+  "name": "@scripture-media/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities for Scripture Media Trial Content App",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0"
+  }
+}
