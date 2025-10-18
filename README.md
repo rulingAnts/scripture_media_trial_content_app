@@ -101,6 +101,7 @@ npm run android
 - **[SECURITY.md](SECURITY.md)** - Security analysis and best practices
 
 ### Reference
+- **[FAQ.md](FAQ.md)** - Frequently asked questions
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
