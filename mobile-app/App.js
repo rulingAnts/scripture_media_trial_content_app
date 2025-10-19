@@ -34,10 +34,10 @@ function App() {
       const info = await DeviceBinding.initialize();
       setDeviceInfo(info);
 
-      // Load current bundle if exists
-      const currentBundle = await BundleManager.getCurrentBundle();
-      if (currentBundle) {
-        setBundle(currentBundle);
+      // Initialize bundle manager (checks for embedded bundle first)
+      const bundle = await BundleManager.initialize();
+      if (bundle) {
+        setBundle(bundle);
         const files = await BundleManager.getMediaFiles();
         setMediaFiles(files);
         

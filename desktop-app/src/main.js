@@ -3,8 +3,12 @@ const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const { createBundleConfig, encrypt, generateDeviceKey } = require('@scripture-media/shared');
+const APKBuilder = require('./apk-builder');
+const TemplateAPKPackager = require('./template-apk-packager');
 
 let mainWindow;
+const apkBuilder = new APKBuilder();
+const templatePackager = new TemplateAPKPackager();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -72,7 +76,130 @@ ipcMain.handle('select-output-directory', async () => {
 
 ipcMain.handle('create-bundle', async (event, bundleData) => {
   try {
-    const { name, deviceIds, mediaFiles, playbackLimits, outputDir } = bundleData;
+    const { outputDir } = bundleData;
+    const result = await createBundleInternal(bundleData, outputDir);
+    
+    // Remove bundleConfig from the result for the original bundle creation
+    const { bundleConfig, ...publicResult } = result;
+    return publicResult;
+  } catch (error) {
+    console.error('Failed to create bundle:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('get-file-info', async (event, filePath) => {
+  try {
+    const stats = await fs.stat(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    
+    return {
+      path: filePath,
+      name: path.basename(filePath),
+      size: stats.size,
+      type: ext.match(/\.(mp4|avi|mov|webm)$/i) ? 'video' : 'audio',
+      ext: ext
+    };
+  } catch (error) {
+    console.error('Failed to get file info:', error);
+    return null;
+  }
+});
+
+// APK Building handlers
+
+ipcMain.handle('validate-apk-environment', async () => {
+  try {
+    return await apkBuilder.validateEnvironment();
+  } catch (error) {
+    console.error('Failed to validate APK environment:', error);
+    return {
+      valid: false,
+      errors: [error.message]
+    };
+  }
+});
+
+ipcMain.handle('build-apk', async (event, buildData) => {
+  try {
+    const { bundleData, outputDir, appName } = buildData;
+    
+    // First create the bundle in a temporary location
+    const tempBundleDir = path.join(__dirname, '../temp', `bundle_${Date.now()}`);
+    await fs.mkdir(tempBundleDir, { recursive: true });
+    
+    // Create bundle using existing logic
+    const bundleResult = await createBundleInternal(bundleData, tempBundleDir);
+    if (!bundleResult.success) {
+      throw new Error(bundleResult.error);
+    }
+    
+    // Build APK with embedded bundle
+    const result = await apkBuilder.buildAPK({
+      bundleDir: bundleResult.bundleDir,
+      bundleConfig: bundleResult.bundleConfig,
+      outputDir,
+      appName,
+      onProgress: (message) => {
+        // Send progress updates to the renderer
+        mainWindow.webContents.send('apk-build-progress', message);
+      }
+    });
+    
+    // Clean up temporary bundle
+    await fs.rm(tempBundleDir, { recursive: true, force: true });
+    
+    return result;
+  } catch (error) {
+    console.error('Failed to build APK:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// No-compile template packager path
+ipcMain.handle('package-apk-from-template', async (event, data) => {
+  try {
+    let { templateApkPath, bundleData, outputDir, outFileName, signOptions } = data;
+
+    // Default template path to repo apk-template/template.apk if not provided
+    if (!templateApkPath) {
+      const fallback = path.resolve(__dirname, '../../apk-template/template.apk');
+      templateApkPath = fallback;
+    }
+
+    // create temp bundle to inject
+    const tempBundleDir = path.join(__dirname, '../temp', `bundle_${Date.now()}`);
+    await fs.mkdir(tempBundleDir, { recursive: true });
+    const resultBundle = await createBundleInternal({ ...bundleData }, path.dirname(tempBundleDir));
+    if (!resultBundle.success) {
+      throw new Error(resultBundle.error);
+    }
+
+    const res = await templatePackager.packageAPK({
+      templateApkPath,
+      bundleDir: resultBundle.bundleDir,
+      outputDir,
+      outFileName,
+      signOptions
+    });
+
+    await fs.rm(tempBundleDir, { recursive: true, force: true });
+    return res;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Helper function to create bundle (extracted from existing code)
+async function createBundleInternal(bundleData, outputDir) {
+  try {
+    const { name, deviceIds, mediaFiles, playbackLimits } = bundleData;
     
     // Generate bundle ID
     const bundleId = `bundle_${name.replace(/\s+/g, '_')}_${Date.now()}`;
@@ -166,6 +293,7 @@ Note: This bundle is encrypted and can only be accessed by authorized devices.
       success: true,
       bundleDir,
       bundleId,
+      bundleConfig,
       filesProcessed: processedMediaFiles.length
     };
   } catch (error) {
@@ -175,22 +303,4 @@ Note: This bundle is encrypted and can only be accessed by authorized devices.
       error: error.message
     };
   }
-});
-
-ipcMain.handle('get-file-info', async (event, filePath) => {
-  try {
-    const stats = await fs.stat(filePath);
-    const ext = path.extname(filePath).toLowerCase();
-    
-    return {
-      path: filePath,
-      name: path.basename(filePath),
-      size: stats.size,
-      type: ext.match(/\.(mp4|avi|mov|webm)$/i) ? 'video' : 'audio',
-      ext: ext
-    };
-  } catch (error) {
-    console.error('Failed to get file info:', error);
-    return null;
-  }
-});
+}

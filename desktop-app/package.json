@@ -11,8 +11,8 @@
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
-    "electron": "^25.0.0",
     "@scripture-media/shared": "file:../shared",
+    "electron": "^38.3.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

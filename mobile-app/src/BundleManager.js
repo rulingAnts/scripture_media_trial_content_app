@@ -13,6 +13,143 @@ class BundleManager {
   }
 
   /**
+   * Initializes the bundle manager and checks for embedded bundles
+   * @returns {Promise<Object|null>} - Bundle if found and loaded
+   */
+  async initialize() {
+    try {
+      // First check for embedded bundle
+      const embeddedBundle = await this.loadEmbeddedBundle();
+      if (embeddedBundle) {
+        return embeddedBundle;
+      }
+
+      // Fallback to previously loaded bundle
+      return await this.getCurrentBundle();
+    } catch (error) {
+      console.error('Failed to initialize bundle manager:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Checks for and loads an embedded bundle from app assets
+   * @returns {Promise<Object|null>} - Embedded bundle if found
+   */
+  async loadEmbeddedBundle() {
+    try {
+      // Android assets live under "assets/" and are accessed via readFileAssets
+      // Check marker in assets/bundle/.embedded (Android). For iOS, MainBundlePath works.
+      let markerData = null;
+      try {
+        const markerContent = await RNFS.readFileAssets('bundle/.embedded');
+        markerData = JSON.parse(markerContent);
+      } catch (e) {
+        // Not found in Android assets; try iOS bundle path
+        try {
+          const markerPathIOS = `${RNFS.MainBundlePath}/bundle/.embedded`;
+          const markerExistsIOS = await RNFS.exists(markerPathIOS);
+          if (!markerExistsIOS) return null;
+          const markerContentIOS = await RNFS.readFile(markerPathIOS, 'utf8');
+          markerData = JSON.parse(markerContentIOS);
+        } catch {
+          return null;
+        }
+      }
+      
+      if (!markerData.embedded) {
+        return null;
+      }
+
+      console.log('Found embedded bundle:', markerData.bundleId);
+
+      // Load the embedded bundle.json (Android assets first)
+      let bundleData;
+      try {
+        bundleData = await RNFS.readFileAssets('bundle/bundle.json');
+      } catch (e) {
+        const bundleJsonPathIOS = `${RNFS.MainBundlePath}/bundle/bundle.json`;
+        bundleData = await RNFS.readFile(bundleJsonPathIOS, 'utf8');
+      }
+      const bundle = JSON.parse(bundleData);
+
+      // Validate bundle structure
+      const validation = validateBundleConfig(bundle);
+      if (!validation.isValid) {
+        throw new Error(`Invalid embedded bundle: ${validation.errors.join(', ')}`);
+      }
+
+      // Check device authorization
+      const isAllowed = await DeviceBinding.isDeviceAllowed(bundle.allowedDeviceIds);
+      if (!isAllowed) {
+        const deviceId = await DeviceBinding.getDeviceId();
+        throw new Error(`Device ${deviceId} is not authorized for this embedded bundle`);
+      }
+
+      // Import media files from embedded assets
+      console.log('Importing embedded media files...');
+  await this.importEmbeddedMediaFiles(bundle);
+
+      // Store bundle configuration
+      await AsyncStorage.setItem('current_bundle', JSON.stringify(bundle));
+      await AsyncStorage.setItem('bundle_source', 'embedded');
+      
+      this.currentBundle = bundle;
+      console.log('Embedded bundle loaded successfully');
+
+      return bundle;
+    } catch (error) {
+      console.error('Failed to load embedded bundle:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Imports media files from embedded assets
+   * @param {Object} bundle - Bundle configuration
+   */
+  async importEmbeddedMediaFiles(bundle) {
+    let importedCount = 0;
+
+    for (const mediaFile of bundle.mediaFiles) {
+      try {
+        // Read encrypted file from Android assets or iOS bundle
+        let encryptedData;
+        const assetPath = `bundle/${mediaFile.encryptedPath}`;
+        try {
+          encryptedData = await RNFS.readFileAssets(assetPath, 'base64');
+        } catch (e) {
+          const sourcePathIOS = `${RNFS.MainBundlePath}/bundle/${mediaFile.encryptedPath}`;
+          const existsIOS = await RNFS.exists(sourcePathIOS);
+          if (!existsIOS) {
+            console.warn(`Embedded media file not found: ${assetPath}`);
+            continue;
+          }
+          encryptedData = await RNFS.readFile(sourcePathIOS, 'base64');
+        }
+
+        // Check if already imported
+        const alreadyExists = await SecureStorage.mediaFileExists(mediaFile.id);
+        if (alreadyExists) {
+          console.log(`Media file ${mediaFile.id} already imported`);
+          continue;
+        }
+        
+        // Store in secure storage
+        await SecureStorage.storeMediaFile(mediaFile.id, encryptedData);
+        importedCount++;
+        
+        console.log(`Imported embedded media file: ${mediaFile.fileName}`);
+      } catch (error) {
+        console.error(`Failed to import embedded media file ${mediaFile.id}:`, error);
+      }
+    }
+
+    console.log(`Imported ${importedCount} embedded media files`);
+    return importedCount;
+  }
+
+  /**
    * Loads a bundle from a file
    * @param {string} bundlePath - Path to the bundle file
    * @returns {Promise<Object>} - Bundle configuration

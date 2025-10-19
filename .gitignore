@@ -1,3 +1,6 @@
+#Secrets
+test_devices
+
 # Logs
 logs
 *.log
@@ -154,3 +157,16 @@ desktop-app/dist
 # Temporary files
 **/temp/
 **/*.tmp
+.DS_Store
+
+# APK Template artifacts (do not commit binaries or keys)
+apk-template/*.apk
+apk-template/*.aab
+apk-template/*.keystore
+apk-template/*.jks
+apk-template/*.pem
+apk-template/*.p12
+apk-template/*.properties
+apk-template/keystore*
+apk-template/signing*
+.template-build

@@ -10,13 +10,14 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.19.0",
+    "@scripture-media/shared": "file:../shared",
+    "electron": "38.3.0",
     "react": "18.2.0",
-    "react-native": "0.72.0",
+    "react-native": "^0.72.17",
     "react-native-device-info": "^10.0.0",
     "react-native-fs": "^2.20.0",
-    "react-native-video": "^5.2.0",
-    "@react-native-async-storage/async-storage": "^1.19.0",
-    "@scripture-media/shared": "file:../shared"
+    "react-native-video": "^5.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
