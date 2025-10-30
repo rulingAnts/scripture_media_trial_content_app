@@ -21,6 +21,17 @@ const createBundleButton = document.getElementById('create-bundle-button');
 const messageContainer = document.getElementById('message-container');
 const loadingDiv = document.getElementById('loading');
 
+// Playlist-level limit DOM elements
+const playlistMaxItemsSessionInput = document.getElementById('playlist-max-items-session');
+const sessionResetDaysInput = document.getElementById('session-reset-days');
+const sessionResetHoursInput = document.getElementById('session-reset-hours');
+const sessionResetMinutesInput = document.getElementById('session-reset-minutes');
+const playlistIntervalDaysInput = document.getElementById('playlist-interval-days');
+const playlistIntervalHoursInput = document.getElementById('playlist-interval-hours');
+const playlistIntervalMinutesInput = document.getElementById('playlist-interval-minutes');
+const playlistMaxTotalItemsInput = document.getElementById('playlist-max-total-items');
+const playlistExpirationDateInput = document.getElementById('playlist-expiration-date');
+
 // Event Listeners
 deviceIdsInput.addEventListener('input', updateDeviceIdsDisplay);
 addMediaButton.addEventListener('click', handleAddMedia);
@@ -46,6 +57,35 @@ function calculatePlaybackLimit() {
     resetIntervalMs: resetIntervalMs || 24 * 60 * 60 * 1000, // Default to 24 hours
     minIntervalBetweenPlaysMs: minIntervalMs || null,
     maxPlaysTotal: maxPlaysTotal
+  };
+}
+
+function calculatePlaylistLimits() {
+  const maxItemsSessionValue = playlistMaxItemsSessionInput.value.trim();
+  const maxItemsPerSession = maxItemsSessionValue ? parseInt(maxItemsSessionValue) : null;
+  
+  const sessionDays = parseInt(sessionResetDaysInput.value) || 0;
+  const sessionHours = parseInt(sessionResetHoursInput.value) || 0;
+  const sessionMinutes = parseInt(sessionResetMinutesInput.value) || 0;
+  const sessionResetMs = (sessionDays * 24 * 60 * 60 * 1000) + (sessionHours * 60 * 60 * 1000) + (sessionMinutes * 60 * 1000);
+  
+  const playlistIntervalDays = parseInt(playlistIntervalDaysInput.value) || 0;
+  const playlistIntervalHours = parseInt(playlistIntervalHoursInput.value) || 0;
+  const playlistIntervalMinutes = parseInt(playlistIntervalMinutesInput.value) || 0;
+  const minIntervalBetweenItemsMs = (playlistIntervalDays * 24 * 60 * 60 * 1000) + (playlistIntervalHours * 60 * 60 * 1000) + (playlistIntervalMinutes * 60 * 1000);
+  
+  const maxTotalItemsValue = playlistMaxTotalItemsInput.value.trim();
+  const maxTotalItemsPlayed = maxTotalItemsValue ? parseInt(maxTotalItemsValue) : null;
+  
+  const playlistExpirationValue = playlistExpirationDateInput.value;
+  const playlistExpiration = playlistExpirationValue ? new Date(playlistExpirationValue).toISOString() : null;
+  
+  return {
+    maxItemsPerSession: maxItemsPerSession,
+    sessionResetIntervalMs: sessionResetMs || null,
+    minIntervalBetweenItemsMs: minIntervalBetweenItemsMs || null,
+    maxTotalItemsPlayed: maxTotalItemsPlayed,
+    expirationDate: playlistExpiration
   };
 }
 
@@ -221,6 +261,8 @@ async function handleCreateBundle() {
     createBundleButton.disabled = true;
 
     // Create bundle
+    const playlistLimits = calculatePlaylistLimits();
+    
     const result = await ipcRenderer.invoke('create-bundle', {
       name: bundleName,
       deviceIds,
@@ -228,6 +270,7 @@ async function handleCreateBundle() {
       playbackLimits: {
         default: playbackLimit
       },
+      playlistLimits: playlistLimits,
       expirationDate,
       outputDir
     });
