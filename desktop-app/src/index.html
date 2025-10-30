@@ -261,103 +261,6 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-
-    .radio-group {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .radio-label {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 15px;
-      border: 2px solid #E0E0E0;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .radio-label:hover {
-      border-color: #667eea;
-      background-color: #f8f9ff;
-    }
-
-    .radio-label input[type="radio"] {
-      margin: 0;
-      margin-top: 2px;
-    }
-
-    .radio-label input[type="radio"]:checked + span {
-      color: #667eea;
-      font-weight: 600;
-    }
-
-    .radio-label input[type="radio"]:checked ~ small {
-      color: #555;
-    }
-
-    .radio-label span {
-      font-weight: 500;
-      color: #333;
-    }
-
-    .radio-label small {
-      display: block;
-      color: #666;
-      font-size: 14px;
-      margin-top: 4px;
-    }
-
-    .environment-status {
-      margin-top: 15px;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border-left: 4px solid #ffc107;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .status-icon {
-      font-size: 18px;
-    }
-
-    .status-details {
-      font-size: 14px;
-      color: #666;
-    }
-
-    .status-details ul {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-
-    .status-details li {
-      margin: 4px 0;
-    }
-
-    .environment-status.valid {
-      border-left-color: #28a745;
-    }
-
-    .environment-status.valid .status-icon {
-      color: #28a745;
-    }
-
-    .environment-status.invalid {
-      border-left-color: #dc3545;
-    }
-
-    .environment-status.invalid .status-icon {
-      color: #dc3545;
-    }
   </style>
 </head>
 <body>
@@ -415,68 +318,12 @@
 
       <div class="loading" id="loading">
         <div class="spinner"></div>
-        <p id="loading-text">Creating bundle...</p>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Output Options</div>
-        
-        <div class="form-group">
-          <label>Choose Output Type:</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" name="output-type" value="bundle" checked>
-              <span>Create Bundle Only</span>
-              <small>Generate encrypted bundle for manual transfer</small>
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="output-type" value="apk">
-              <span>Build APK with Embedded Bundle</span>
-              <small>Create complete Android app with bundle included</small>
-            </label>
-          </div>
-        </div>
-
-        <div class="form-group" id="apk-options" style="display: none;">
-          <label for="app-name">App Name *</label>
-          <input type="text" id="app-name" placeholder="e.g., Luke_Gospel_App">
-          <small>Name for the generated APK file</small>
-
-          <div class="form-group" style="margin-top: 12px;">
-            <label>Optional: Package from Template APK (No Compile)</label>
-            <input type="text" id="template-apk-path" placeholder="Path to template APK (prebuilt app)">
-            <small>Provide a prebuilt, unsigned/signed template APK to inject the bundle without compiling.</small>
-          </div>
-
-          <div class="form-group" style="margin-top: 12px;">
-            <label>Optional: Signing (apksigner)</label>
-            <input type="text" id="keystore-path" placeholder="Path to keystore file (.jks/.keystore)">
-            <input type="text" id="keystore-alias" placeholder="Key alias">
-            <input type="password" id="keystore-storepass" placeholder="Keystore password">
-            <input type="password" id="keystore-keypass" placeholder="Key password (optional)">
-            <small>If omitted, the APK will be unsigned. You can sign later with apksigner.</small>
-          </div>
-
-          <div class="action-buttons" style="margin-top: 8px;">
-            <button class="button" id="package-template-button">Package from Template (No Compile)</button>
-          </div>
-        </div>
-
-        <div id="environment-status" class="environment-status" style="display: none;">
-          <div class="status-indicator" id="status-indicator">
-            <span class="status-icon">⚠️</span>
-            <span id="status-text">Checking build environment...</span>
-          </div>
-          <div id="status-details" class="status-details"></div>
-        </div>
+        <p>Creating bundle...</p>
       </div>
 
       <div class="action-buttons">
         <button class="button button-primary" id="create-bundle-button">
           Create Bundle
-        </button>
-        <button class="button button-primary" id="build-apk-button" style="display: none;">
-          Build APK
         </button>
       </div>
     </div>

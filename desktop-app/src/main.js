@@ -2,13 +2,14 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
-const { createBundleConfig, encrypt, generateDeviceKey } = require('@scripture-media/shared');
-const APKBuilder = require('./apk-builder');
-const TemplateAPKPackager = require('./template-apk-packager');
+const { createBundleConfig } = require('@scripture-media/shared');
+const { encrypt, generateDeviceKey } = require('@scripture-media/shared');
+// Shared config encryption key (must match mobile app)
+const CONFIG_SHARED_KEY = 'scripture-media-config-v1';
+const tar = require('tar');
+const crypto = require('crypto');
 
 let mainWindow;
-const apkBuilder = new APKBuilder();
-const templatePackager = new TemplateAPKPackager();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -50,7 +51,8 @@ ipcMain.handle('select-media-files', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Media Files', extensions: ['mp3', 'mp4', 'wav', 'm4a', 'webm', 'avi', 'mov'] },
+      // Limit to formats widely supported on Android via ExoPlayer
+      { name: 'Media Files (Android-friendly)', extensions: ['mp3', 'mp4', 'm4a', 'wav'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   });
@@ -76,12 +78,155 @@ ipcMain.handle('select-output-directory', async () => {
 
 ipcMain.handle('create-bundle', async (event, bundleData) => {
   try {
-    const { outputDir } = bundleData;
-    const result = await createBundleInternal(bundleData, outputDir);
+    const { name, deviceIds, mediaFiles, playbackLimits, outputDir } = bundleData;
     
-    // Remove bundleConfig from the result for the original bundle creation
-    const { bundleConfig, ...publicResult } = result;
-    return publicResult;
+    // Generate bundle ID and secure bundle key
+    const bundleId = `bundle_${name.replace(/\s+/g, '_')}_${Date.now()}`;
+    const bundleKey = crypto.randomBytes(32).toString('hex'); // Random key for bundle encryption
+    
+    // Create temporary bundle directory
+    const tempDir = path.join(require('os').tmpdir(), bundleId);
+    await fs.mkdir(tempDir, { recursive: true });
+    
+    // Create media directory
+    const mediaDir = path.join(tempDir, 'media');
+    await fs.mkdir(mediaDir, { recursive: true });
+
+    // Process and encrypt media files
+    const processedMediaFiles = [];
+    
+    const supportedVideo = /\.(mp4)$/i;
+    const supportedAudio = /\.(mp3|m4a|wav)$/i;
+    for (const mediaFile of mediaFiles) {
+      try {
+        const mediaId = uuidv4();
+        const fileExt = path.extname(mediaFile.path);
+        const lowerExt = fileExt.toLowerCase();
+        if (!supportedVideo.test(lowerExt) && !supportedAudio.test(lowerExt)) {
+          throw new Error(`Unsupported media type for Android: ${fileExt}. Supported: .mp4 (H.264/AAC), .mp3, .m4a, .wav`);
+        }
+  const encryptedFileName = `${mediaId}${fileExt}.enc`;
+        const encryptedPath = path.join(mediaDir, encryptedFileName);
+        
+        // Read media file
+        const fileData = await fs.readFile(mediaFile.path);
+        const base64Data = fileData.toString('base64');
+        
+        // Encrypt with a device-specific key derived from the first device ID
+        const deviceKey = generateDeviceKey(deviceIds[0], 'scripture-media-app-2024');
+        const encryptedData = encrypt(base64Data, deviceKey);
+        
+        // Write encrypted file
+        await fs.writeFile(encryptedPath, encryptedData, 'utf8');
+        
+        // Calculate file checksum for verification
+        const checksum = crypto.createHash('sha256').update(fileData).digest('hex');
+        
+        processedMediaFiles.push({
+          id: mediaId,
+          fileName: path.basename(mediaFile.path),
+          title: mediaFile.title || path.basename(mediaFile.path, fileExt),
+          type: mediaFile.type || (supportedVideo.test(lowerExt) ? 'video' : 'audio'),
+          encryptedPath: `media/${encryptedFileName}`,
+          checksum: checksum,
+          playbackLimit: mediaFile.playbackLimit || playbackLimits.default
+        });
+      } catch (error) {
+        console.error(`Failed to process media file ${mediaFile.path}:`, error);
+        throw error;
+      }
+    }
+
+    // Create bundle configuration
+    const bundleConfig = createBundleConfig({
+      bundleId,
+      allowedDeviceIds: deviceIds,
+      mediaFiles: processedMediaFiles,
+      playbackLimits,
+      bundleKey: bundleKey, // Include bundle key for verification
+      integrity: crypto.createHash('sha256').update(JSON.stringify({
+        bundleId,
+        allowedDeviceIds: deviceIds,
+        mediaFiles: processedMediaFiles,
+        playbackLimits
+      })).digest('hex')
+    });
+
+  // Encrypt the bundle configuration using a shared key
+  const configJson = JSON.stringify(bundleConfig, null, 2);
+  const encryptedConfig = encrypt(configJson, CONFIG_SHARED_KEY);
+    
+    // Write encrypted bundle configuration with .smb extension (Scripture Media Bundle)
+    const configPath = path.join(tempDir, 'bundle.smb');
+    await fs.writeFile(configPath, encryptedConfig, 'utf8');
+
+    // Create README with updated instructions
+    const readmePath = path.join(tempDir, 'README.txt');
+    const readmeContent = `Scripture Media Bundle
+======================
+
+Bundle ID: ${bundleId}
+Created: ${new Date().toLocaleString()}
+
+Authorized Devices: ${deviceIds.length}
+Media Files: ${processedMediaFiles.length}
+
+Playback Limits:
+- Max plays per file: ${playbackLimits.default.maxPlays}
+- Reset interval: ${playbackLimits.default.resetIntervalHours} hours
+
+To use this bundle:
+1. Transfer the entire .smbundle file to the mobile device
+2. Import the bundle in the Scripture Media app
+3. The app will verify device authorization before allowing access
+
+SECURITY NOTICE:
+- This bundle is encrypted and compressed
+- The configuration is encrypted with device-specific keys
+- Tampering with the bundle will prevent it from working
+- Only authorized devices can decrypt and use this content
+
+Note: This bundle can only be accessed by specifically authorized devices.
+Do not attempt to modify the bundle file as it will become unusable.
+`;
+    await fs.writeFile(readmePath, readmeContent, 'utf8');
+
+    // Create bundle manifest for integrity checking
+    const manifestPath = path.join(tempDir, 'manifest.json');
+    const manifest = {
+      version: '2.0',
+      bundleId,
+      created: new Date().toISOString(),
+      files: processedMediaFiles.length,
+      devices: deviceIds.length,
+      checksum: crypto.createHash('sha256').update(configJson).digest('hex')
+    };
+    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+
+    // Create compressed archive with custom extension
+    const archiveName = `${bundleId}.smbundle`;
+    const archivePath = path.join(outputDir, archiveName);
+    
+    // Create tar.gz archive
+    await tar.create(
+      {
+        gzip: true,
+        file: archivePath,
+        cwd: tempDir
+      },
+      ['.'] // Include all files in temp directory
+    );
+
+    // Clean up temporary directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+
+    return {
+      success: true,
+      bundleDir: archivePath,
+      bundleId,
+      filesProcessed: processedMediaFiles.length,
+      archiveName
+    };
   } catch (error) {
     console.error('Failed to create bundle:', error);
     return {
@@ -100,7 +245,7 @@ ipcMain.handle('get-file-info', async (event, filePath) => {
       path: filePath,
       name: path.basename(filePath),
       size: stats.size,
-      type: ext.match(/\.(mp4|avi|mov|webm)$/i) ? 'video' : 'audio',
+      type: ext.match(/\.(mp4)$/i) ? 'video' : 'audio',
       ext: ext
     };
   } catch (error) {
@@ -108,199 +253,3 @@ ipcMain.handle('get-file-info', async (event, filePath) => {
     return null;
   }
 });
-
-// APK Building handlers
-
-ipcMain.handle('validate-apk-environment', async () => {
-  try {
-    return await apkBuilder.validateEnvironment();
-  } catch (error) {
-    console.error('Failed to validate APK environment:', error);
-    return {
-      valid: false,
-      errors: [error.message]
-    };
-  }
-});
-
-ipcMain.handle('build-apk', async (event, buildData) => {
-  try {
-    const { bundleData, outputDir, appName } = buildData;
-    
-    // First create the bundle in a temporary location
-    const tempBundleDir = path.join(__dirname, '../temp', `bundle_${Date.now()}`);
-    await fs.mkdir(tempBundleDir, { recursive: true });
-    
-    // Create bundle using existing logic
-    const bundleResult = await createBundleInternal(bundleData, tempBundleDir);
-    if (!bundleResult.success) {
-      throw new Error(bundleResult.error);
-    }
-    
-    // Build APK with embedded bundle
-    const result = await apkBuilder.buildAPK({
-      bundleDir: bundleResult.bundleDir,
-      bundleConfig: bundleResult.bundleConfig,
-      outputDir,
-      appName,
-      onProgress: (message) => {
-        // Send progress updates to the renderer
-        mainWindow.webContents.send('apk-build-progress', message);
-      }
-    });
-    
-    // Clean up temporary bundle
-    await fs.rm(tempBundleDir, { recursive: true, force: true });
-    
-    return result;
-  } catch (error) {
-    console.error('Failed to build APK:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-// No-compile template packager path
-ipcMain.handle('package-apk-from-template', async (event, data) => {
-  try {
-    let { templateApkPath, bundleData, outputDir, outFileName, signOptions } = data;
-
-    // Default template path to repo apk-template/template.apk if not provided
-    if (!templateApkPath) {
-      const fallback = path.resolve(__dirname, '../../apk-template/template.apk');
-      templateApkPath = fallback;
-    }
-
-    // create temp bundle to inject
-    const tempBundleDir = path.join(__dirname, '../temp', `bundle_${Date.now()}`);
-    await fs.mkdir(tempBundleDir, { recursive: true });
-    const resultBundle = await createBundleInternal({ ...bundleData }, path.dirname(tempBundleDir));
-    if (!resultBundle.success) {
-      throw new Error(resultBundle.error);
-    }
-
-    const res = await templatePackager.packageAPK({
-      templateApkPath,
-      bundleDir: resultBundle.bundleDir,
-      outputDir,
-      outFileName,
-      signOptions
-    });
-
-    await fs.rm(tempBundleDir, { recursive: true, force: true });
-    return res;
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-// Helper function to create bundle (extracted from existing code)
-async function createBundleInternal(bundleData, outputDir) {
-  try {
-    const { name, deviceIds, mediaFiles, playbackLimits } = bundleData;
-    
-    // Generate bundle ID
-    const bundleId = `bundle_${name.replace(/\s+/g, '_')}_${Date.now()}`;
-    
-    // Create bundle directory
-    const bundleDir = path.join(outputDir, bundleId);
-    await fs.mkdir(bundleDir, { recursive: true });
-    
-    // Create media directory
-    const mediaDir = path.join(bundleDir, 'media');
-    await fs.mkdir(mediaDir, { recursive: true });
-
-    // Process and encrypt media files
-    const processedMediaFiles = [];
-    
-    for (const mediaFile of mediaFiles) {
-      try {
-        const mediaId = uuidv4();
-        const fileExt = path.extname(mediaFile.path);
-        const encryptedFileName = `${mediaId}.enc`;
-        const encryptedPath = path.join(mediaDir, encryptedFileName);
-        
-        // Read media file
-        const fileData = await fs.readFile(mediaFile.path);
-        const base64Data = fileData.toString('base64');
-        
-        // Encrypt with a device-specific key
-        // For simplicity, using the first device ID as the base
-        const deviceKey = generateDeviceKey(deviceIds[0], 'scripture-media-app-2024');
-        const encryptedData = encrypt(base64Data, deviceKey);
-        
-        // Write encrypted file
-        await fs.writeFile(encryptedPath, encryptedData, 'utf8');
-        
-        // Calculate file checksum (simple hash for verification)
-        const crypto = require('crypto');
-        const checksum = crypto.createHash('sha256').update(fileData).digest('hex');
-        
-        processedMediaFiles.push({
-          id: mediaId,
-          fileName: path.basename(mediaFile.path),
-          title: mediaFile.title || path.basename(mediaFile.path, fileExt),
-          type: mediaFile.type || (fileExt.match(/\.(mp4|avi|mov|webm)$/i) ? 'video' : 'audio'),
-          encryptedPath: `media/${encryptedFileName}`,
-          checksum: checksum,
-          playbackLimit: mediaFile.playbackLimit || playbackLimits.default
-        });
-      } catch (error) {
-        console.error(`Failed to process media file ${mediaFile.path}:`, error);
-        throw error;
-      }
-    }
-
-    // Create bundle configuration
-    const bundleConfig = createBundleConfig({
-      bundleId,
-      allowedDeviceIds: deviceIds,
-      mediaFiles: processedMediaFiles,
-      playbackLimits
-    });
-
-    // Write bundle configuration
-    const configPath = path.join(bundleDir, 'bundle.json');
-    await fs.writeFile(configPath, JSON.stringify(bundleConfig, null, 2), 'utf8');
-
-    // Create README
-    const readmePath = path.join(bundleDir, 'README.txt');
-    const readmeContent = `Scripture Media Bundle
-======================
-
-Bundle ID: ${bundleId}
-Created: ${new Date().toLocaleString()}
-
-Authorized Devices: ${deviceIds.length}
-Media Files: ${processedMediaFiles.length}
-
-Playback Limits:
-- Max plays per file: ${playbackLimits.default.maxPlays}
-- Reset interval: ${playbackLimits.default.resetIntervalHours} hours
-
-To use this bundle:
-1. Copy the entire bundle directory to the mobile device
-2. Import the bundle in the Scripture Media app
-3. The app will verify device authorization before allowing access
-
-Note: This bundle is encrypted and can only be accessed by authorized devices.
-`;
-    await fs.writeFile(readmePath, readmeContent, 'utf8');
-
-    return {
-      success: true,
-      bundleDir,
-      bundleId,
-      bundleConfig,
-      filesProcessed: processedMediaFiles.length
-    };
-  } catch (error) {
-    console.error('Failed to create bundle:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}

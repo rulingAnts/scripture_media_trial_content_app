@@ -1,3 +1,8 @@
+#apk
+*.apk
+build
+dist
+
 #Secrets
 test_devices
 
@@ -157,16 +162,91 @@ desktop-app/dist
 # Temporary files
 **/temp/
 **/*.tmp
+
+# macOS
 .DS_Store
 
-# APK Template artifacts (do not commit binaries or keys)
-apk-template/*.apk
-apk-template/*.aab
-apk-template/*.keystore
-apk-template/*.jks
-apk-template/*.pem
-apk-template/*.p12
-apk-template/*.properties
-apk-template/keystore*
-apk-template/signing*
-.template-build
+# VS Code
+.vscode/
+
+# Android / Gradle (generic)
+**/.gradle/
+**/local.properties
+**/gradlew
+**/gradlew.bat
+**/gradle/wrapper/gradle-wrapper.jar
+**/gradle/wrapper/gradle-wrapper.properties
+**/outputs/
+
+# Flutter (mobile_app)
+mobile_app/.dart_tool/
+mobile_app/.packages
+mobile_app/.flutter-plugins
+mobile_app/.flutter-plugins-dependencies
+mobile_app/.metadata
+mobile_app/build/
+mobile_app/ios/.symlinks
+mobile_app/ios/Pods
+mobile_app/ios/build
+mobile_app/ios/DerivedData
+mobile_app/android/.gradle
+mobile_app/android/local.properties
+mobile_app/android/app/build
+mobile_app/android/build
+
+# React Native (mobile-app)
+mobile-app/.expo
+mobile-app/.expo-shared
+mobile-app/.metro-cache
+mobile-app/android/app/release
+mobile-app/android/app/debug
+mobile-app/android/build
+mobile-app/android/app/build
+mobile-app/android/local.properties
+mobile-app/ios/DerivedData
+mobile-app/ios/build
+mobile-app/ios/*.xcuserdatad
+mobile-app/ios/*.xcworkspace/xcuserdata
+
+# Desktop/Electron
+desktop-app/out
+desktop-app/build
+desktop-app/release
+
+# Shared package outputs
+shared/dist
+shared/build
+
+# Large/binary artifacts
+*.aab
+*.apk
+*.ipa
+*.xcarchive
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.dmg
+*.pkg
+*.msi
+*.exe
+
+# Media and bundle artifacts (avoid large files in repo)
+*.smbundle
+*.enc
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.mp3
+*.m4a
+*.wav
+
+# Keystores and secrets
+**/*.keystore
+**/*.jks
+**/*keystore.properties
+**/*.pem
+**/*.p12
+**/*.pfx

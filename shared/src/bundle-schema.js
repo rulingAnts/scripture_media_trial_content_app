@@ -16,11 +16,13 @@ function createBundleConfig(options) {
     bundleId,
     allowedDeviceIds = [],
     mediaFiles = [],
-    playbackLimits = {}
+    playbackLimits = {},
+    bundleKey = null,
+    integrity = null
   } = options;
 
   return {
-    version: '1.0',
+    version: '2.0',
     bundleId,
     createdAt: new Date().toISOString(),
     allowedDeviceIds,
@@ -41,7 +43,9 @@ function createBundleConfig(options) {
         maxPlays: 3,
         resetIntervalHours: 24
       }
-    }
+    },
+    bundleKey,
+    integrity
   };
 }
 
@@ -83,13 +87,50 @@ function validateBundleConfig(config) {
     });
   }
 
+  // Version 2.0 specific validations
+  if (config.version === '2.0') {
+    if (!config.bundleKey) {
+      errors.push('Bundle key is required for version 2.0');
+    }
+    if (!config.integrity) {
+      errors.push('Integrity hash is required for version 2.0');
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors
   };
 }
 
+/**
+ * Verifies bundle integrity
+ * @param {Object} config - Bundle configuration
+ * @returns {boolean} - True if integrity check passes
+ */
+function verifyBundleIntegrity(config) {
+  if (config.version !== '2.0') {
+    return false; // Only version 2.0 supports integrity checking
+  }
+
+  if (!config.integrity || !config.bundleKey) {
+    return false;
+  }
+
+  // Create expected integrity hash
+  const crypto = require('crypto');
+  const expectedHash = crypto.createHash('sha256').update(JSON.stringify({
+    bundleId: config.bundleId,
+    allowedDeviceIds: config.allowedDeviceIds,
+    mediaFiles: config.mediaFiles,
+    playbackLimits: config.playbackLimits
+  })).digest('hex');
+
+  return expectedHash === config.integrity;
+}
+
 module.exports = {
   createBundleConfig,
-  validateBundleConfig
+  validateBundleConfig,
+  verifyBundleIntegrity
 };

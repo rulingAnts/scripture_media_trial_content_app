@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Blocks committing files larger than 25 MB.
+# To enable, run: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+max_mb=25
+max_bytes=$((max_mb * 1024 * 1024))
+
+# Get added/modified files staged for commit
+staged_files=$(git diff --cached --name-only --diff-filter=AM)
+
+if [ -z "${staged_files}" ]; then
+  exit 0
+fi
+
+block=0
+
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  # Get blob SHA from the index for this path
+  sha=$(git ls-files -s -- "$file" | awk '{print $2}')
+  if [ -n "$sha" ]; then
+    size=$(git cat-file -s "$sha")
+    if [ "$size" -gt "$max_bytes" ]; then
+      # compute size in MB with 1 decimal
+      size_mb=$(awk -v s="$size" 'BEGIN {printf "%.1f", s/1048576}')
+      echo "Error: $file is ${size_mb}MB (> ${max_mb}MB). Use Git LFS or exclude it."
+      block=1
+    fi
+  fi
+done <<< "$staged_files"
+
+if [ "$block" -eq 1 ]; then
+  echo "Commit aborted: one or more staged files exceed ${max_mb}MB."
+  exit 1
+fi
+
+exit 0
