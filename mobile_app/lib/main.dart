@@ -17,7 +17,11 @@ class _PlayInfo {
   final int used;
   final int? max;
   final Duration? remaining;
-  const _PlayInfo(this.used, this.max, this.remaining);
+  final int? totalPlays;
+  final int? maxTotal;
+  final bool isPermanentlyLocked;
+  final String? lockReason;
+  const _PlayInfo(this.used, this.max, this.remaining, this.totalPlays, this.maxTotal, this.isPermanentlyLocked, this.lockReason);
 }
 
 void main() {
@@ -373,17 +377,76 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _attemptAutoPlay() async {
     if (_controller == null) return;
-    // No pending-charge processing; pausing allowed indefinitely.
+    
     if (!await _canPlayCurrent()) {
       final id = _currentMediaId;
-      Duration? rem;
-      if (id != null) rem = await _remainingBlockTime(id);
-      if (id != null) {
-        rem = await _remainingBlockTime(id);
+      if (id == null) {
+        setState(() {
+          _status = 'No media selected.';
+        });
+        return;
       }
-      if (id != null) {
-        rem = await _remainingBlockTime(id);
+      
+      final prefs = await SharedPreferences.getInstance();
+      final bundleId = _bundleConfig != null
+          ? (_bundleConfig!['bundleId'] ?? 'unknown')
+          : 'unknown';
+      
+      // Check time tampering
+      final lastKnownTimeKey = 'lastKnownTime';
+      final lastKnownTimeMs = prefs.getInt(lastKnownTimeKey);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (lastKnownTimeMs != null && now < lastKnownTimeMs) {
+        setState(() {
+          _status = 'Time tampering detected. Bundle is permanently locked.';
+        });
+        return;
       }
+      
+      // Check bundle expiration
+      final expirationDateStr = _bundleExpirationDate();
+      if (expirationDateStr != null) {
+        final expirationDate = DateTime.parse(expirationDateStr);
+        if (DateTime.now().isAfter(expirationDate)) {
+          setState(() {
+            _status = 'Bundle expired on ${expirationDate.toLocal()}. Permanently locked.';
+          });
+          return;
+        }
+      }
+      
+      // Check total plays limit
+      final maxPlaysTotal = _maxPlaysTotalFor(id);
+      if (maxPlaysTotal != null) {
+        final totalKey = 'playsTotal:$bundleId:$id';
+        final totalPlays = prefs.getInt(totalKey) ?? 0;
+        if (totalPlays >= maxPlaysTotal) {
+          setState(() {
+            _status = 'Maximum lifetime plays ($maxPlaysTotal) reached. Permanently locked.';
+          });
+          return;
+        }
+      }
+      
+      // Check minimum interval between plays
+      final minIntervalMs = _minIntervalMsFor(id);
+      if (minIntervalMs != null && minIntervalMs > 0) {
+        final lastPlayKey = 'lastPlay:$bundleId:$id';
+        final lastPlayMs = prefs.getInt(lastPlayKey);
+        if (lastPlayMs != null) {
+          final timeSinceLastPlay = now - lastPlayMs;
+          if (timeSinceLastPlay < minIntervalMs) {
+            final remaining = Duration(milliseconds: minIntervalMs - timeSinceLastPlay);
+            setState(() {
+              _status = 'Must wait ${_fmtDuration(remaining)} between plays.';
+            });
+            return;
+          }
+        }
+      }
+      
+      // Check windowed plays limit
+      final rem = await _remainingBlockTime(id);
       final msg = rem == null
           ? 'Play limit reached for this media.'
           : 'Play limit reached. Resets in ${_fmtDuration(rem)}';
@@ -394,7 +457,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     _startPlaySession();
     _controller!.play();
-    // No persisted timers.
   }
 
   Future<void> _stopPlayback() async {
@@ -455,6 +517,81 @@ class _MyHomePageState extends State<MyHomePage> {
     return maxPlays;
   }
 
+  int _resetMsFor(String fileName) {
+    final m = _findMediaConfig(fileName);
+    int? resetMs;
+    if (m != null) {
+      final Map<String, dynamic>? limit = (m['playbackLimit'] as Map?)
+          ?.cast<String, dynamic>();
+      resetMs = (limit?['resetIntervalMs'] as num?)?.toInt();
+      // Legacy support for resetIntervalHours
+      if (resetMs == null) {
+        final hours = (limit?['resetIntervalHours'] as num?)?.toInt();
+        if (hours != null) {
+          resetMs = hours * 3600 * 1000;
+        }
+      }
+    }
+    if (resetMs == null) {
+      final cfg = _bundleConfig;
+      final Map<String, dynamic>? defaults = (cfg?['playbackLimits'] as Map?)
+          ?.cast<String, dynamic>();
+      final Map<String, dynamic>? def = (defaults?['default'] as Map?)
+          ?.cast<String, dynamic>();
+      resetMs = (def?['resetIntervalMs'] as num?)?.toInt();
+      // Legacy support
+      if (resetMs == null) {
+        final hours = (def?['resetIntervalHours'] as num?)?.toInt();
+        if (hours != null) {
+          resetMs = hours * 3600 * 1000;
+        }
+      }
+    }
+    return resetMs ?? 24 * 3600 * 1000;
+  }
+
+  int? _minIntervalMsFor(String fileName) {
+    final m = _findMediaConfig(fileName);
+    int? minIntervalMs;
+    if (m != null) {
+      final Map<String, dynamic>? limit = (m['playbackLimit'] as Map?)
+          ?.cast<String, dynamic>();
+      minIntervalMs = (limit?['minIntervalBetweenPlaysMs'] as num?)?.toInt();
+    }
+    if (minIntervalMs == null) {
+      final cfg = _bundleConfig;
+      final Map<String, dynamic>? defaults = (cfg?['playbackLimits'] as Map?)
+          ?.cast<String, dynamic>();
+      final Map<String, dynamic>? def = (defaults?['default'] as Map?)
+          ?.cast<String, dynamic>();
+      minIntervalMs = (def?['minIntervalBetweenPlaysMs'] as num?)?.toInt();
+    }
+    return minIntervalMs;
+  }
+
+  int? _maxPlaysTotalFor(String fileName) {
+    final m = _findMediaConfig(fileName);
+    int? maxPlaysTotal;
+    if (m != null) {
+      final Map<String, dynamic>? limit = (m['playbackLimit'] as Map?)
+          ?.cast<String, dynamic>();
+      maxPlaysTotal = (limit?['maxPlaysTotal'] as num?)?.toInt();
+    }
+    if (maxPlaysTotal == null) {
+      final cfg = _bundleConfig;
+      final Map<String, dynamic>? defaults = (cfg?['playbackLimits'] as Map?)
+          ?.cast<String, dynamic>();
+      final Map<String, dynamic>? def = (defaults?['default'] as Map?)
+          ?.cast<String, dynamic>();
+      maxPlaysTotal = (def?['maxPlaysTotal'] as num?)?.toInt();
+    }
+    return maxPlaysTotal;
+  }
+
+  String? _bundleExpirationDate() {
+    return _bundleConfig?['expirationDate'] as String?;
+  }
+
   int _resetHoursFor(String fileName) {
     final m = _findMediaConfig(fileName);
     int? hours;
@@ -480,15 +617,74 @@ class _MyHomePageState extends State<MyHomePage> {
         ? (_bundleConfig!['bundleId'] ?? 'unknown')
         : 'unknown';
     final key = 'playsUsed:$bundleId:$fileName';
+    final totalKey = 'playsTotal:$bundleId:$fileName';
+    final lastPlayKey = 'lastPlay:$bundleId:$fileName';
+    
     // Ensure window
     final used = await _ensureWindowAndGetUsed(fileName);
     final current = used;
     await prefs.setInt(key, current + 1);
+    
+    // Increment total plays
+    final currentTotal = prefs.getInt(totalKey) ?? 0;
+    await prefs.setInt(totalKey, currentTotal + 1);
+    
+    // Update last play time
+    await prefs.setInt(lastPlayKey, DateTime.now().millisecondsSinceEpoch);
   }
 
   Future<bool> _canPlayCurrent() async {
     final id = _currentMediaId;
     if (id == null) return false;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    
+    // Check for time tampering
+    final lastKnownTimeKey = 'lastKnownTime';
+    final lastKnownTimeMs = prefs.getInt(lastKnownTimeKey);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (lastKnownTimeMs != null && now < lastKnownTimeMs) {
+      // Time went backward - possible tampering
+      return false;
+    }
+    await prefs.setInt(lastKnownTimeKey, now);
+    
+    // Check bundle expiration
+    final expirationDateStr = _bundleExpirationDate();
+    if (expirationDateStr != null) {
+      final expirationDate = DateTime.parse(expirationDateStr);
+      if (DateTime.now().isAfter(expirationDate)) {
+        return false;
+      }
+    }
+    
+    // Check total plays limit
+    final maxPlaysTotal = _maxPlaysTotalFor(id);
+    if (maxPlaysTotal != null) {
+      final totalKey = 'playsTotal:$bundleId:$id';
+      final totalPlays = prefs.getInt(totalKey) ?? 0;
+      if (totalPlays >= maxPlaysTotal) {
+        return false;
+      }
+    }
+    
+    // Check minimum interval between plays
+    final minIntervalMs = _minIntervalMsFor(id);
+    if (minIntervalMs != null && minIntervalMs > 0) {
+      final lastPlayKey = 'lastPlay:$bundleId:$id';
+      final lastPlayMs = prefs.getInt(lastPlayKey);
+      if (lastPlayMs != null) {
+        final timeSinceLastPlay = now - lastPlayMs;
+        if (timeSinceLastPlay < minIntervalMs) {
+          return false;
+        }
+      }
+    }
+    
+    // Check windowed plays limit
     final maxPlays = _maxPlaysFor(id);
     if (maxPlays == null) return true; // No known limit
     final used = await _ensureWindowAndGetUsed(id);
@@ -503,7 +699,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final usedKey = 'playsUsed:$bundleId:$fileName';
     final winKey = 'playWindowStart:$bundleId:$fileName';
     final now = DateTime.now().millisecondsSinceEpoch;
-    final resetMs = _resetHoursFor(fileName) * 3600 * 1000;
+    final resetMs = _resetMsFor(fileName);
     final start = prefs.getInt(winKey);
     int used = prefs.getInt(usedKey) ?? 0;
     if (start == null || (now - start) >= resetMs) {
@@ -523,7 +719,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final start = prefs.getInt(winKey);
     if (start == null) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final resetMs = _resetHoursFor(fileName) * 3600 * 1000;
+    final resetMs = _resetMsFor(fileName);
     final end = start + resetMs;
     final remainingMs = end - now;
     if (remainingMs <= 0) return Duration.zero;
@@ -531,10 +727,40 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<_PlayInfo> _getPlayInfo(String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    
+    // Check for permanent locks
+    final lastKnownTimeKey = 'lastKnownTime';
+    final lastKnownTimeMs = prefs.getInt(lastKnownTimeKey);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (lastKnownTimeMs != null && now < lastKnownTimeMs) {
+      return _PlayInfo(0, 0, null, 0, 0, true, 'Time tampering detected');
+    }
+    
+    final expirationDateStr = _bundleExpirationDate();
+    if (expirationDateStr != null) {
+      final expirationDate = DateTime.parse(expirationDateStr);
+      if (DateTime.now().isAfter(expirationDate)) {
+        return _PlayInfo(0, 0, null, 0, 0, true, 'Bundle expired');
+      }
+    }
+    
     final used = await _ensureWindowAndGetUsed(fileName);
     final max = _maxPlaysFor(fileName);
     final rem = await _remainingBlockTime(fileName);
-    return _PlayInfo(used, max, rem);
+    
+    final totalKey = 'playsTotal:$bundleId:$fileName';
+    final totalPlays = prefs.getInt(totalKey) ?? 0;
+    final maxTotal = _maxPlaysTotalFor(fileName);
+    
+    if (maxTotal != null && totalPlays >= maxTotal) {
+      return _PlayInfo(used, max, rem, totalPlays, maxTotal, true, 'Lifetime limit reached');
+    }
+    
+    return _PlayInfo(used, max, rem, totalPlays, maxTotal, false, null);
   }
 
   void _startPlaySession() {
@@ -835,17 +1061,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               icon: const Icon(Icons.play_arrow),
                               onPressed: () async {
                                 if (!await _canPlayCurrent()) {
-                                  final id = _currentMediaId;
-                                  Duration? rem;
-                                  if (id != null) {
-                                    rem = await _remainingBlockTime(id);
-                                  }
-                                  final msg = rem == null
-                                      ? 'Play limit reached for this media.'
-                                      : 'Play limit reached. Resets in ${_fmtDuration(rem)}';
-                                  setState(() {
-                                    _status = msg;
-                                  });
+                                  await _attemptAutoPlay(); // Will set proper error message
                                   return;
                                 }
                                 _startPlaySession();
@@ -906,7 +1122,13 @@ class _MyHomePageState extends State<MyHomePage> {
                             String? subtitle;
                             Widget? trailing;
                             if (info != null) {
-                              if (info.max == null) {
+                              if (info.isPermanentlyLocked) {
+                                subtitle = 'Locked: ${info.lockReason}';
+                                trailing = const Icon(
+                                  Icons.lock,
+                                  color: Colors.redAccent,
+                                );
+                              } else if (info.max == null) {
                                 subtitle = 'No play limit';
                                 trailing = const SizedBox.shrink();
                               } else {
@@ -914,6 +1136,13 @@ class _MyHomePageState extends State<MyHomePage> {
                                   0,
                                   info.max!,
                                 );
+                                
+                                String totalInfo = '';
+                                if (info.maxTotal != null) {
+                                  final totalLeft = (info.maxTotal! - info.totalPlays!).clamp(0, info.maxTotal!);
+                                  totalInfo = ' · $totalLeft / ${info.maxTotal} total';
+                                }
+                                
                                 if (left > 0) {
                                   final resetStr =
                                       (info.remaining != null &&
@@ -921,7 +1150,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       ? ' · resets in ${_fmtDuration(info.remaining!)}'
                                       : '';
                                   subtitle =
-                                      '$left / ${info.max} plays left$resetStr';
+                                      '$left / ${info.max} plays left$resetStr$totalInfo';
                                   trailing = IconButton(
                                     icon: const Icon(Icons.play_arrow),
                                     onPressed: () =>
