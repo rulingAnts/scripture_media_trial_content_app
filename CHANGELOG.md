@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Android File Association for .smbundle files**
+  - Intent filters for VIEW action (opening from file managers)
+  - Intent filters for SEND action (sharing from other apps)
+  - Automatic bundle processing when files are opened or shared
+  - Support for opening .smbundle files from WhatsApp, email, and other apps
+  - Seamless user experience with automatic file association
+  - Error handling for shared file processing
+  - Documentation: SMBUNDLE_FILE_ASSOCIATION.md and TESTING_FILE_ASSOCIATION.md
+
+### Changed
+- Refactored bundle import logic into reusable `_processBundle()` method
+- Added `receive_sharing_intent` package for handling shared files
+
 ## [1.0.0] - 2024-01-15
 
 ### Added

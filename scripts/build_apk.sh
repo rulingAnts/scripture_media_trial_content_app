@@ -125,7 +125,8 @@ log "Using device: $DEVICE_ID"
 PACKAGE_NAME="$PACKAGE_OVERRIDE"
 if [[ -z "$PACKAGE_NAME" ]]; then
   if [[ -f "$MANIFEST" ]]; then
-    PACKAGE_NAME=$(grep -Po 'package="\K[^"]+' "$MANIFEST" | head -n1 || true)
+    # Use sed (portable on macOS/Linux) to extract manifest package attribute
+    PACKAGE_NAME=$(sed -n 's/.*package="\([^"]*\)".*/\1/p' "$MANIFEST" | head -n1 || true)
   fi
   if [[ -z "$PACKAGE_NAME" ]]; then
     warn "Could not auto-detect package from AndroidManifest.xml; defaulting to com.example.mobile_app"
@@ -152,10 +153,24 @@ fi
 
 # Launch app via monkey (doesn't require knowing the main activity)
 log "Launching app ($PACKAGE_NAME)..."
-adb -s "$DEVICE_ID" shell monkey -p "$PACKAGE_NAME" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || {
+if ! adb -s "$DEVICE_ID" shell monkey -p "$PACKAGE_NAME" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; then
   warn "Launch via monkey failed. Trying direct 'am start'..."
-  adb -s "$DEVICE_ID" shell cmd package resolve-activity --brief "$PACKAGE_NAME" | tail -n 1 | xargs -I {} adb -s "$DEVICE_ID" shell am start -n {}
-}
+  # Try to resolve the launcher activity from the device
+  RES=$(adb -s "$DEVICE_ID" shell cmd package resolve-activity --brief "$PACKAGE_NAME" 2>/dev/null | tail -n 1 | tr -d '\r' || true)
+  if [[ "$RES" != *"/"* ]]; then
+    # Try resolving explicitly for MAIN/LAUNCHER
+    RES=$(adb -s "$DEVICE_ID" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$PACKAGE_NAME" 2>/dev/null | tail -n 1 | tr -d '\r' || true)
+  fi
+  if [[ "$RES" != *"/"* ]]; then
+    # Fall back to conventional MainActivity path if resolution failed
+    RES="$PACKAGE_NAME/.MainActivity"
+  fi
+  if [[ "$RES" == "No"* || "$RES" == "no"* ]]; then
+    err "Unable to resolve launcher activity for $PACKAGE_NAME (got: '$RES')"
+    exit 1
+  fi
+  adb -s "$DEVICE_ID" shell am start -n "$RES"
+fi
 
 popd >/dev/null
 log "Done."

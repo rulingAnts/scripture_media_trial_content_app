@@ -14,6 +14,8 @@ import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:audio_session/audio_session.dart';
 
 // Global app key to allow changing locale from settings page
 final GlobalKey<_MyAppState> _myAppKey = GlobalKey<_MyAppState>();
@@ -1127,12 +1129,47 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _sessionCharged = false;
   // Track last saved position (ms) to throttle persistence
   int _lastSavedPosMs = 0;
+  // Stream subscriptions for receiving shared files
+  late StreamSubscription<List<SharedMediaFile>> _intentDataStreamSubscription;
 
   @override
   void initState() {
     super.initState();
     _getDeviceId();
     _loadLastPlayed();
+    _configureAudioSession();
+    _initReceiveSharingIntent();
+  }
+
+  Future<void> _configureAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+      // Optional: listen for interruptions and handle gracefully
+      session.interruptionEventStream.listen((event) async {
+        final c = _controller;
+        if (c == null) return;
+        if (event.begin) {
+          // Pause on interruption start
+          try {
+            await c.pause();
+          } catch (_) {}
+        } else {
+          // Interruption ended; do not auto-resume to respect user context
+        }
+      });
+      session.becomingNoisyEventStream.listen((_) async {
+        // Headphones disconnected; pause playback to avoid blasting on speakers
+        final c = _controller;
+        if (c != null) {
+          try {
+            await c.pause();
+          } catch (_) {}
+        }
+      });
+    } catch (_) {
+      // Best-effort only; ignore if audio session not available
+    }
   }
 
   String _t(String key, [Map<String, String>? params]) {
@@ -1177,6 +1214,55 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() => _deviceId = deviceId ?? 'Unknown');
   }
 
+  void _initReceiveSharingIntent() {
+    // For sharing via share menu or opening from another app while app is in memory
+    _intentDataStreamSubscription = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen(
+          (List<SharedMediaFile> value) {
+            if (value.isNotEmpty) {
+              _handleSharedFile(value.first.path);
+            }
+          },
+          onError: (err) {
+            // Log error and show user-friendly message
+            if (mounted) {
+              setState(() {
+                _status = _t('status_error_generic', {
+                  'message': 'Failed to receive shared file',
+                });
+              });
+            }
+          },
+        );
+
+    // For sharing via share menu or opening from another app while app is closed
+    ReceiveSharingIntent.instance.getInitialMedia().then((
+      List<SharedMediaFile> value,
+    ) {
+      if (value.isNotEmpty) {
+        _handleSharedFile(value.first.path);
+        // Clear the initial shared file to prevent re-processing
+        ReceiveSharingIntent.instance.reset();
+      }
+    });
+  }
+
+  Future<void> _handleSharedFile(String filePath) async {
+    try {
+      if (!filePath.toLowerCase().endsWith('.smbundle')) {
+        setState(() => _status = _t('status_select_smbundle'));
+        return;
+      }
+      // Process the bundle using the existing logic
+      await _processBundle(filePath);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _status = _t('status_error_generic', {'message': '$e'}));
+      }
+    }
+  }
+
   Future<void> _pickAndProcessBundle() async {
     setState(() {
       _isLoading = true;
@@ -1204,8 +1290,23 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() => _status = _t('status_select_smbundle'));
         return;
       }
-      setState(() => _status = _t('status_extracting_bundle'));
+      await _processBundle(bundlePath);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = _t('status_error_generic', {'message': '$e'}));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
+  Future<void> _processBundle(String bundlePath) async {
+    setState(() {
+      _isLoading = true;
+      _status = _t('status_extracting_bundle');
+    });
+    try {
       final tempDir = await getTemporaryDirectory();
       final extractionPath = '${tempDir.path}/bundle_extract';
       await Directory(extractionPath).create(recursive: true);
@@ -1984,6 +2085,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     _finalizePlaySession();
     _controller?.dispose();
+    _intentDataStreamSubscription.cancel();
     super.dispose();
   }
 
