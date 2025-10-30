@@ -15,6 +15,7 @@ import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:audio_session/audio_session.dart';
 
 // Global app key to allow changing locale from settings page
 final GlobalKey<_MyAppState> _myAppKey = GlobalKey<_MyAppState>();
@@ -1136,7 +1137,39 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _getDeviceId();
     _loadLastPlayed();
+    _configureAudioSession();
     _initReceiveSharingIntent();
+  }
+
+  Future<void> _configureAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+      // Optional: listen for interruptions and handle gracefully
+      session.interruptionEventStream.listen((event) async {
+        final c = _controller;
+        if (c == null) return;
+        if (event.begin) {
+          // Pause on interruption start
+          try {
+            await c.pause();
+          } catch (_) {}
+        } else {
+          // Interruption ended; do not auto-resume to respect user context
+        }
+      });
+      session.becomingNoisyEventStream.listen((_) async {
+        // Headphones disconnected; pause playback to avoid blasting on speakers
+        final c = _controller;
+        if (c != null) {
+          try {
+            await c.pause();
+          } catch (_) {}
+        }
+      });
+    } catch (_) {
+      // Best-effort only; ignore if audio session not available
+    }
   }
 
   String _t(String key, [Map<String, String>? params]) {
@@ -1183,24 +1216,30 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _initReceiveSharingIntent() {
     // For sharing via share menu or opening from another app while app is in memory
-    _intentDataStreamSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
-      (List<SharedMediaFile> value) {
-        if (value.isNotEmpty) {
-          _handleSharedFile(value.first.path);
-        }
-      },
-      onError: (err) {
-        // Log error and show user-friendly message
-        if (mounted) {
-          setState(() {
-            _status = _t('status_error_generic', {'message': 'Failed to receive shared file'});
-          });
-        }
-      },
-    );
+    _intentDataStreamSubscription = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen(
+          (List<SharedMediaFile> value) {
+            if (value.isNotEmpty) {
+              _handleSharedFile(value.first.path);
+            }
+          },
+          onError: (err) {
+            // Log error and show user-friendly message
+            if (mounted) {
+              setState(() {
+                _status = _t('status_error_generic', {
+                  'message': 'Failed to receive shared file',
+                });
+              });
+            }
+          },
+        );
 
     // For sharing via share menu or opening from another app while app is closed
-    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+    ReceiveSharingIntent.instance.getInitialMedia().then((
+      List<SharedMediaFile> value,
+    ) {
       if (value.isNotEmpty) {
         _handleSharedFile(value.first.path);
         // Clear the initial shared file to prevent re-processing

@@ -7,6 +7,7 @@
         <activity
             android:name="net.iraobi.scripturedemoplayer.MainActivity"
             android:exported="true"
+            android:grantUriPermissions="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
@@ -25,18 +26,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Intent filter for opening .smbundle files from file managers -->
+            <!-- Intent filters to open/view .smbundle files from file managers and chat apps -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="file"/>
-                <data android:scheme="content"/>
-                <data android:host="*"/>
-                <data android:pathPattern=".*\\.smbundle"/>
-                <data android:pathPattern=".*\\..*\\.smbundle"/>
-                <data android:pathPattern=".*\\..*\\..*\\.smbundle"/>
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.smbundle"/>
+                <!-- Common mime types used by apps for unknown/binary or gzip/tar content -->
+                <data android:scheme="content" android:mimeType="application/octet-stream"/>
+                <data android:scheme="file"    android:mimeType="application/octet-stream"/>
+                <data android:scheme="content" android:mimeType="application/gzip"/>
+                <data android:scheme="file"    android:mimeType="application/gzip"/>
+                <data android:scheme="content" android:mimeType="application/x-gzip"/>
+                <data android:scheme="file"    android:mimeType="application/x-gzip"/>
+                <data android:scheme="content" android:mimeType="application/x-tar"/>
+                <data android:scheme="file"    android:mimeType="application/x-tar"/>
+                <!-- Fallback for apps that use */* but provide a .smbundle path; require extension -->
+                <data android:scheme="content" android:mimeType="*/*" android:pathPattern=".*\\.smbundle"/>
+                <data android:scheme="file"    android:mimeType="*/*" android:pathPattern=".*\\.smbundle"/>
             </intent-filter>
             <!-- Intent filter for sharing .smbundle files (e.g., from WhatsApp) -->
             <intent-filter>
