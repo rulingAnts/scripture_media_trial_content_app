@@ -1129,7 +1129,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // Track last saved position (ms) to throttle persistence
   int _lastSavedPosMs = 0;
   // Stream subscriptions for receiving shared files
-  late StreamSubscription _intentDataStreamSubscription;
+  late StreamSubscription<List<SharedMediaFile>> _intentDataStreamSubscription;
 
   @override
   void initState() {
