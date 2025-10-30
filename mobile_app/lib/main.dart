@@ -21,7 +21,15 @@ class _PlayInfo {
   final int? maxTotal;
   final bool isPermanentlyLocked;
   final String? lockReason;
-  const _PlayInfo(this.used, this.max, this.remaining, this.totalPlays, this.maxTotal, this.isPermanentlyLocked, this.lockReason);
+  const _PlayInfo(
+    this.used,
+    this.max,
+    this.remaining,
+    this.totalPlays,
+    this.maxTotal,
+    this.isPermanentlyLocked,
+    this.lockReason,
+  );
 }
 
 void main() {
@@ -377,7 +385,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _attemptAutoPlay() async {
     if (_controller == null) return;
-    
+
     if (!await _canPlayCurrent()) {
       final id = _currentMediaId;
       if (id == null) {
@@ -386,12 +394,12 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         return;
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final bundleId = _bundleConfig != null
           ? (_bundleConfig!['bundleId'] ?? 'unknown')
           : 'unknown';
-      
+
       // Check time tampering
       final lastKnownTimeKey = 'lastKnownTime';
       final lastKnownTimeMs = prefs.getInt(lastKnownTimeKey);
@@ -402,19 +410,20 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         return;
       }
-      
+
       // Check bundle expiration
       final expirationDateStr = _bundleExpirationDate();
       if (expirationDateStr != null) {
         final expirationDate = DateTime.parse(expirationDateStr);
         if (DateTime.now().isAfter(expirationDate)) {
           setState(() {
-            _status = 'Bundle expired on ${expirationDate.toLocal()}. Permanently locked.';
+            _status =
+                'Bundle expired on ${expirationDate.toLocal()}. Permanently locked.';
           });
           return;
         }
       }
-      
+
       // Check total plays limit
       final maxPlaysTotal = _maxPlaysTotalFor(id);
       if (maxPlaysTotal != null) {
@@ -422,12 +431,13 @@ class _MyHomePageState extends State<MyHomePage> {
         final totalPlays = prefs.getInt(totalKey) ?? 0;
         if (totalPlays >= maxPlaysTotal) {
           setState(() {
-            _status = 'Maximum lifetime plays ($maxPlaysTotal) reached. Permanently locked.';
+            _status =
+                'Maximum lifetime plays ($maxPlaysTotal) reached. Permanently locked.';
           });
           return;
         }
       }
-      
+
       // Check minimum interval between plays
       final minIntervalMs = _minIntervalMsFor(id);
       if (minIntervalMs != null && minIntervalMs > 0) {
@@ -436,7 +446,9 @@ class _MyHomePageState extends State<MyHomePage> {
         if (lastPlayMs != null) {
           final timeSinceLastPlay = now - lastPlayMs;
           if (timeSinceLastPlay < minIntervalMs) {
-            final remaining = Duration(milliseconds: minIntervalMs - timeSinceLastPlay);
+            final remaining = Duration(
+              milliseconds: minIntervalMs - timeSinceLastPlay,
+            );
             setState(() {
               _status = 'Must wait ${_fmtDuration(remaining)} between plays.';
             });
@@ -444,7 +456,7 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         }
       }
-      
+
       // Check windowed plays limit
       final rem = await _remainingBlockTime(id);
       final msg = rem == null
@@ -619,16 +631,16 @@ class _MyHomePageState extends State<MyHomePage> {
     final key = 'playsUsed:$bundleId:$fileName';
     final totalKey = 'playsTotal:$bundleId:$fileName';
     final lastPlayKey = 'lastPlay:$bundleId:$fileName';
-    
+
     // Ensure window
     final used = await _ensureWindowAndGetUsed(fileName);
     final current = used;
     await prefs.setInt(key, current + 1);
-    
+
     // Increment total plays
     final currentTotal = prefs.getInt(totalKey) ?? 0;
     await prefs.setInt(totalKey, currentTotal + 1);
-    
+
     // Update last play time
     await prefs.setInt(lastPlayKey, DateTime.now().millisecondsSinceEpoch);
   }
@@ -636,12 +648,12 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<bool> _canPlayCurrent() async {
     final id = _currentMediaId;
     if (id == null) return false;
-    
+
     final prefs = await SharedPreferences.getInstance();
     final bundleId = _bundleConfig != null
         ? (_bundleConfig!['bundleId'] ?? 'unknown')
         : 'unknown';
-    
+
     // Check for time tampering
     final lastKnownTimeKey = 'lastKnownTime';
     final lastKnownTimeMs = prefs.getInt(lastKnownTimeKey);
@@ -651,7 +663,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return false;
     }
     await prefs.setInt(lastKnownTimeKey, now);
-    
+
     // Check bundle expiration
     final expirationDateStr = _bundleExpirationDate();
     if (expirationDateStr != null) {
@@ -660,7 +672,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return false;
       }
     }
-    
+
     // Check total plays limit
     final maxPlaysTotal = _maxPlaysTotalFor(id);
     if (maxPlaysTotal != null) {
@@ -670,7 +682,7 @@ class _MyHomePageState extends State<MyHomePage> {
         return false;
       }
     }
-    
+
     // Check minimum interval between plays
     final minIntervalMs = _minIntervalMsFor(id);
     if (minIntervalMs != null && minIntervalMs > 0) {
@@ -683,7 +695,7 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       }
     }
-    
+
     // Check windowed plays limit
     final maxPlays = _maxPlaysFor(id);
     if (maxPlays == null) return true; // No known limit
@@ -731,7 +743,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final bundleId = _bundleConfig != null
         ? (_bundleConfig!['bundleId'] ?? 'unknown')
         : 'unknown';
-    
+
     // Check for permanent locks
     final lastKnownTimeKey = 'lastKnownTime';
     final lastKnownTimeMs = prefs.getInt(lastKnownTimeKey);
@@ -739,7 +751,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (lastKnownTimeMs != null && now < lastKnownTimeMs) {
       return _PlayInfo(0, 0, null, 0, 0, true, 'Time tampering detected');
     }
-    
+
     final expirationDateStr = _bundleExpirationDate();
     if (expirationDateStr != null) {
       final expirationDate = DateTime.parse(expirationDateStr);
@@ -747,19 +759,27 @@ class _MyHomePageState extends State<MyHomePage> {
         return _PlayInfo(0, 0, null, 0, 0, true, 'Bundle expired');
       }
     }
-    
+
     final used = await _ensureWindowAndGetUsed(fileName);
     final max = _maxPlaysFor(fileName);
     final rem = await _remainingBlockTime(fileName);
-    
+
     final totalKey = 'playsTotal:$bundleId:$fileName';
     final totalPlays = prefs.getInt(totalKey) ?? 0;
     final maxTotal = _maxPlaysTotalFor(fileName);
-    
+
     if (maxTotal != null && totalPlays >= maxTotal) {
-      return _PlayInfo(used, max, rem, totalPlays, maxTotal, true, 'Lifetime limit reached');
+      return _PlayInfo(
+        used,
+        max,
+        rem,
+        totalPlays,
+        maxTotal,
+        true,
+        'Lifetime limit reached',
+      );
     }
-    
+
     return _PlayInfo(used, max, rem, totalPlays, maxTotal, false, null);
   }
 
@@ -1136,13 +1156,18 @@ class _MyHomePageState extends State<MyHomePage> {
                                   0,
                                   info.max!,
                                 );
-                                
+
                                 String totalInfo = '';
                                 if (info.maxTotal != null) {
-                                  final totalLeft = (info.maxTotal! - info.totalPlays!).clamp(0, info.maxTotal!);
-                                  totalInfo = ' · $totalLeft / ${info.maxTotal} total';
+                                  final totalLeft =
+                                      (info.maxTotal! - info.totalPlays!).clamp(
+                                        0,
+                                        info.maxTotal!,
+                                      );
+                                  totalInfo =
+                                      ' · $totalLeft / ${info.maxTotal} total';
                                 }
-                                
+
                                 if (left > 0) {
                                   final resetStr =
                                       (info.remaining != null &&

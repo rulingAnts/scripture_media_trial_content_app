@@ -44,7 +44,7 @@ The app now supports four types of playback restrictions that can be combined to
 
 **Use cases:**
 - Prevent rapid repeated plays
-- Encourage thoughtful engagement with content
+- Prevent the user being able to memorize content that is not yet consultant approved.
 - Combine with windowed limits (e.g., 3 plays per day, but 15 minutes between each)
 
 ### 3. Total Play Limit (NEW)
