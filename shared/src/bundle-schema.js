@@ -9,6 +9,7 @@
  * @param {Array<string>} options.allowedDeviceIds - List of allowed device IDs
  * @param {Array<Object>} options.mediaFiles - Media files in the bundle
  * @param {Object} options.playbackLimits - Playback limit configuration
+ * @param {string} options.expirationDate - Optional expiration date (ISO 8601)
  * @returns {Object} - Bundle configuration object
  */
 function createBundleConfig(options) {
@@ -18,13 +19,22 @@ function createBundleConfig(options) {
     mediaFiles = [],
     playbackLimits = {},
     bundleKey = null,
-    integrity = null
+    integrity = null,
+    expirationDate = null
   } = options;
+
+  const defaultLimits = {
+    maxPlays: 3,
+    resetIntervalMs: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    minIntervalBetweenPlaysMs: null, // Optional: minimum time between plays
+    maxPlaysTotal: null // Optional: absolute lifetime limit
+  };
 
   return {
     version: '2.0',
     bundleId,
     createdAt: new Date().toISOString(),
+    expirationDate,
     allowedDeviceIds,
     mediaFiles: mediaFiles.map(file => ({
       id: file.id,
@@ -33,16 +43,10 @@ function createBundleConfig(options) {
       type: file.type || 'audio', // audio or video
       encryptedPath: file.encryptedPath,
       checksum: file.checksum,
-      playbackLimit: file.playbackLimit || playbackLimits.default || {
-        maxPlays: 3,
-        resetIntervalHours: 24
-      }
+      playbackLimit: file.playbackLimit || playbackLimits.default || defaultLimits
     })),
     playbackLimits: {
-      default: playbackLimits.default || {
-        maxPlays: 3,
-        resetIntervalHours: 24
-      }
+      default: playbackLimits.default || defaultLimits
     },
     bundleKey,
     integrity

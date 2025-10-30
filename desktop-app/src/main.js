@@ -78,7 +78,7 @@ ipcMain.handle('select-output-directory', async () => {
 
 ipcMain.handle('create-bundle', async (event, bundleData) => {
   try {
-    const { name, deviceIds, mediaFiles, playbackLimits, outputDir } = bundleData;
+    const { name, deviceIds, mediaFiles, playbackLimits, expirationDate, outputDir } = bundleData;
     
     // Generate bundle ID and secure bundle key
     const bundleId = `bundle_${name.replace(/\s+/g, '_')}_${Date.now()}`;
@@ -143,12 +143,14 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
       allowedDeviceIds: deviceIds,
       mediaFiles: processedMediaFiles,
       playbackLimits,
+      expirationDate,
       bundleKey: bundleKey, // Include bundle key for verification
       integrity: crypto.createHash('sha256').update(JSON.stringify({
         bundleId,
         allowedDeviceIds: deviceIds,
         mediaFiles: processedMediaFiles,
-        playbackLimits
+        playbackLimits,
+        expirationDate
       })).digest('hex')
     });
 

@@ -7,7 +7,14 @@ const bundleNameInput = document.getElementById('bundle-name');
 const deviceIdsInput = document.getElementById('device-ids');
 const deviceIdsDisplay = document.getElementById('device-ids-display');
 const maxPlaysInput = document.getElementById('max-plays');
+const resetDaysInput = document.getElementById('reset-days');
 const resetHoursInput = document.getElementById('reset-hours');
+const resetMinutesInput = document.getElementById('reset-minutes');
+const intervalDaysInput = document.getElementById('interval-days');
+const intervalHoursInput = document.getElementById('interval-hours');
+const intervalMinutesInput = document.getElementById('interval-minutes');
+const maxPlaysTotalInput = document.getElementById('max-plays-total');
+const expirationDateInput = document.getElementById('expiration-date');
 const addMediaButton = document.getElementById('add-media-button');
 const mediaList = document.getElementById('media-list');
 const createBundleButton = document.getElementById('create-bundle-button');
@@ -20,6 +27,28 @@ addMediaButton.addEventListener('click', handleAddMedia);
 createBundleButton.addEventListener('click', handleCreateBundle);
 
 // Functions
+function calculatePlaybackLimit() {
+  const resetDays = parseInt(resetDaysInput.value) || 0;
+  const resetHours = parseInt(resetHoursInput.value) || 0;
+  const resetMinutes = parseInt(resetMinutesInput.value) || 0;
+  const resetIntervalMs = (resetDays * 24 * 60 * 60 * 1000) + (resetHours * 60 * 60 * 1000) + (resetMinutes * 60 * 1000);
+  
+  const intervalDays = parseInt(intervalDaysInput.value) || 0;
+  const intervalHours = parseInt(intervalHoursInput.value) || 0;
+  const intervalMinutes = parseInt(intervalMinutesInput.value) || 0;
+  const minIntervalMs = (intervalDays * 24 * 60 * 60 * 1000) + (intervalHours * 60 * 60 * 1000) + (intervalMinutes * 60 * 1000);
+  
+  const maxPlaysTotalValue = maxPlaysTotalInput.value.trim();
+  const maxPlaysTotal = maxPlaysTotalValue ? parseInt(maxPlaysTotalValue) : null;
+  
+  return {
+    maxPlays: parseInt(maxPlaysInput.value),
+    resetIntervalMs: resetIntervalMs || 24 * 60 * 60 * 1000, // Default to 24 hours
+    minIntervalBetweenPlaysMs: minIntervalMs || null,
+    maxPlaysTotal: maxPlaysTotal
+  };
+}
+
 function updateDeviceIdsDisplay() {
   const deviceIds = deviceIdsInput.value
     .split('\n')
@@ -46,6 +75,8 @@ async function handleAddMedia() {
       return;
     }
 
+    const playbackLimit = calculatePlaybackLimit();
+
     for (const filePath of filePaths) {
       const fileInfo = await ipcRenderer.invoke('get-file-info', filePath);
       
@@ -56,10 +87,7 @@ async function handleAddMedia() {
           size: fileInfo.size,
           type: fileInfo.type,
           title: fileInfo.name.replace(/\.[^/.]+$/, ''),
-          playbackLimit: {
-            maxPlays: parseInt(maxPlaysInput.value),
-            resetIntervalHours: parseInt(resetHoursInput.value)
-          }
+          playbackLimit: { ...playbackLimit }
         });
       }
     }
@@ -83,6 +111,29 @@ function renderMediaList() {
     item.className = 'media-item';
 
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+    
+    // Format time intervals for display
+    const resetMs = file.playbackLimit.resetIntervalMs || 0;
+    const resetDays = Math.floor(resetMs / (24 * 60 * 60 * 1000));
+    const resetHours = Math.floor((resetMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const resetMinutes = Math.floor((resetMs % (60 * 60 * 1000)) / (60 * 1000));
+    const resetStr = [
+      resetDays > 0 ? `${resetDays}d` : '',
+      resetHours > 0 ? `${resetHours}h` : '',
+      resetMinutes > 0 ? `${resetMinutes}m` : ''
+    ].filter(s => s).join(' ') || '0m';
+
+    const minIntervalMs = file.playbackLimit.minIntervalBetweenPlaysMs || 0;
+    const intervalDays = Math.floor(minIntervalMs / (24 * 60 * 60 * 1000));
+    const intervalHours = Math.floor((minIntervalMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const intervalMinutes = Math.floor((minIntervalMs % (60 * 60 * 1000)) / (60 * 1000));
+    const intervalStr = minIntervalMs > 0 ? [
+      intervalDays > 0 ? `${intervalDays}d` : '',
+      intervalHours > 0 ? `${intervalHours}h` : '',
+      intervalMinutes > 0 ? `${intervalMinutes}m` : ''
+    ].filter(s => s).join(' ') : 'None';
+
+    const maxTotalStr = file.playbackLimit.maxPlaysTotal ? `Max total: ${file.playbackLimit.maxPlaysTotal}` : 'No lifetime limit';
 
     item.innerHTML = `
       <div class="media-info">
@@ -90,7 +141,9 @@ function renderMediaList() {
         <div class="media-details">
           ${file.type.toUpperCase()} • ${sizeInMB} MB • 
           Max plays: ${file.playbackLimit.maxPlays} • 
-          Reset: ${file.playbackLimit.resetIntervalHours}h
+          Reset: ${resetStr} • 
+          Interval: ${intervalStr} • 
+          ${maxTotalStr}
         </div>
       </div>
       <div class="media-settings">
@@ -135,11 +188,26 @@ async function handleCreateBundle() {
     }
 
     const maxPlays = parseInt(maxPlaysInput.value);
-    const resetHours = parseInt(resetHoursInput.value);
+    const playbackLimit = calculatePlaybackLimit();
 
-    if (maxPlays < 1 || resetHours < 1) {
-      showError('Playback limits must be at least 1');
+    if (maxPlays < 1) {
+      showError('Maximum plays must be at least 1');
       return;
+    }
+
+    if (playbackLimit.resetIntervalMs < 60000) {
+      showError('Reset interval must be at least 1 minute');
+      return;
+    }
+
+    // Validate expiration date if set
+    let expirationDate = null;
+    if (expirationDateInput.value) {
+      expirationDate = new Date(expirationDateInput.value).toISOString();
+      if (new Date(expirationDate) <= new Date()) {
+        showError('Expiration date must be in the future');
+        return;
+      }
     }
 
     // Select output directory
@@ -158,11 +226,9 @@ async function handleCreateBundle() {
       deviceIds,
       mediaFiles,
       playbackLimits: {
-        default: {
-          maxPlays,
-          resetIntervalHours: resetHours
-        }
+        default: playbackLimit
       },
+      expirationDate,
       outputDir
     });
 
