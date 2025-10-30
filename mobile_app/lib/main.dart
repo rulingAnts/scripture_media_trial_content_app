@@ -398,6 +398,17 @@ class L10n {
       'status_play_limit_reached': 'Limite de lectures atteinte pour ce média.',
       'status_play_limit_reached_with_reset':
           'Limite de lectures atteinte. Réinitialisation dans {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'La liste de lecture a expiré le {date}. Verrouillé définitivement.',
+      'status_playlist_max_items_lock':
+          'Nombre maximum d\'éléments uniques ({max}) de la liste déjà joués. Verrouillé définitivement.',
+      'status_must_wait_between_items':
+          'Vous devez attendre {duration} entre la lecture de différents éléments.',
+      'status_playlist_session_limit':
+          'Limite de session atteinte : {max} éléments par session. Réinitialisation dans {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Limite de session atteinte : {max} éléments par session.',
       'ui_media_label': 'Média : {name}',
       'ui_no_play_limit': 'Aucune limite de lectures',
       'ui_resets_in': ' · se réinitialise dans {duration}',
@@ -465,6 +476,17 @@ class L10n {
           'Wiedergabelimit für dieses Medium erreicht.',
       'status_play_limit_reached_with_reset':
           'Wiedergabelimit erreicht. Setzt sich zurück in {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Wiedergabeliste ist am {date} abgelaufen. Dauerhaft gesperrt.',
+      'status_playlist_max_items_lock':
+          'Maximale eindeutige Elemente ({max}) der Wiedergabeliste bereits abgespielt. Dauerhaft gesperrt.',
+      'status_must_wait_between_items':
+          'Zwischen dem Abspielen verschiedener Elemente müssen {duration} vergehen.',
+      'status_playlist_session_limit':
+          'Sitzungslimit erreicht: {max} Elemente pro Sitzung. Setzt sich zurück in {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Sitzungslimit erreicht: {max} Elemente pro Sitzung.',
       'ui_media_label': 'Medium: {name}',
       'ui_no_play_limit': 'Kein Wiedergabelimit',
       'ui_resets_in': ' · setzt sich zurück in {duration}',
@@ -529,6 +551,17 @@ class L10n {
       'status_play_limit_reached': 'Afspeellimiet voor dit medium bereikt.',
       'status_play_limit_reached_with_reset':
           'Afspeellimiet bereikt. Herstelt over {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Afspeellijst is verlopen op {date}. Permanent vergrendeld.',
+      'status_playlist_max_items_lock':
+          'Maximum unieke items ({max}) van afspeellijst al afgespeeld. Permanent vergrendeld.',
+      'status_must_wait_between_items':
+          'Wacht {duration} tussen het afspelen van verschillende items.',
+      'status_playlist_session_limit':
+          'Sessielimiet bereikt: {max} items per sessie. Herstelt over {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Sessielimiet bereikt: {max} items per sessie.',
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Geen afspeellimiet',
       'ui_resets_in': ' · herstelt over {duration}',
@@ -595,6 +628,17 @@ class L10n {
       'status_play_limit_reached': 'Speelbeperking vir hierdie media bereik.',
       'status_play_limit_reached_with_reset':
           'Speelbeperking bereik. Stel terug oor {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Speellys het op {date} verval. Permanent gesluit.',
+      'status_playlist_max_items_lock':
+          'Maksimum unieke items ({max}) van speellys reeds gespeel. Permanent gesluit.',
+      'status_must_wait_between_items':
+          'Moet {duration} wag tussen verskillende items te speel.',
+      'status_playlist_session_limit':
+          'Sessiebeperking bereik: {max} items per sessie. Stel terug oor {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Sessiebeperking bereik: {max} items per sessie.',
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Geen speelbeperking',
       'ui_resets_in': ' · stel terug oor {duration}',
@@ -663,6 +707,17 @@ class L10n {
           'Limite de reproduções atingido para esta mídia.',
       'status_play_limit_reached_with_reset':
           'Limite de reproduções atingido. Redefine em {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Lista de reprodução expirou em {date}. Bloqueado permanentemente.',
+      'status_playlist_max_items_lock':
+          'Número máximo de itens únicos ({max}) da lista já reproduzidos. Bloqueado permanentemente.',
+      'status_must_wait_between_items':
+          'Aguarde {duration} entre reproduzir diferentes itens.',
+      'status_playlist_session_limit':
+          'Limite de sessão atingido: {max} itens por sessão. Redefine em {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Limite de sessão atingido: {max} itens por sessão.',
       'ui_media_label': 'Mídia: {name}',
       'ui_no_play_limit': 'Sem limite de reproduções',
       'ui_resets_in': ' · redefine em {duration}',
@@ -732,6 +787,17 @@ class L10n {
       'status_play_limit_reached': 'Batas pemutaran untuk media ini tercapai.',
       'status_play_limit_reached_with_reset':
           'Batas pemutaran tercapai. Akan disetel ulang dalam {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Daftar putar kedaluwarsa pada {date}. Terkunci permanen.',
+      'status_playlist_max_items_lock':
+          'Item unik maksimum ({max}) dari daftar putar sudah diputar. Terkunci permanen.',
+      'status_must_wait_between_items':
+          'Harus menunggu {duration} antara memutar item yang berbeda.',
+      'status_playlist_session_limit':
+          'Batas sesi tercapai: {max} item per sesi. Akan disetel ulang dalam {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Batas sesi tercapai: {max} item per sesi.',
       // UI labels
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Tidak ada batas pemutaran',
@@ -801,6 +867,17 @@ class L10n {
           'Достигнут лимит воспроизведений для этого медиа.',
       'status_play_limit_reached_with_reset':
           'Лимит воспроизведений достигнут. Сброс через {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Плейлист истек {date}. Навсегда заблокирован.',
+      'status_playlist_max_items_lock':
+          'Достигнут максимум уникальных элементов ({max}) из плейлиста. Навсегда заблокирован.',
+      'status_must_wait_between_items':
+          'Нужно подождать {duration} между воспроизведением разных элементов.',
+      'status_playlist_session_limit':
+          'Достигнут лимит сессии: {max} элементов за сессию. Сброс через {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Достигнут лимит сессии: {max} элементов за сессию.',
       'ui_media_label': 'Медиа: {name}',
       'ui_no_play_limit': 'Без лимита воспроизведений',
       'ui_resets_in': ' · сброс через {duration}',
@@ -866,6 +943,17 @@ class L10n {
       'status_play_limit_reached': 'इस मीडिया के लिए प्ले सीमा पूरी हो गई है।',
       'status_play_limit_reached_with_reset':
           'प्ले सीमा पूरी हुई। {duration} में रीसेट होगा',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'प्लेलिस्ट {date} को समाप्त हुई। स्थायी रूप से लॉक।',
+      'status_playlist_max_items_lock':
+          'प्लेलिस्ट से अधिकतम अनूठे आइटम ({max}) पहले ही चलाए गए। स्थायी रूप से लॉक।',
+      'status_must_wait_between_items':
+          'विभिन्न आइटम चलाने के बीच {duration} प्रतीक्षा करें।',
+      'status_playlist_session_limit':
+          'सत्र सीमा पूरी हुई: प्रति सत्र {max} आइटम। {duration} में रीसेट होगा',
+      'status_playlist_session_limit_no_reset':
+          'सत्र सीमा पूरी हुई: प्रति सत्र {max} आइटम।',
       'ui_media_label': 'मीडिया: {name}',
       'ui_no_play_limit': 'कोई प्ले सीमा नहीं',
       'ui_resets_in': ' · {duration} में रीसेट होता है',
@@ -928,6 +1016,17 @@ class L10n {
       'status_play_limit_reached': 'تم بلوغ حد التشغيل لهذه الوسائط.',
       'status_play_limit_reached_with_reset':
           'تم بلوغ حد التشغيل. سيتم إعادة التعيين خلال {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'انتهت صلاحية قائمة التشغيل في {date}. مقفلة نهائيًا.',
+      'status_playlist_max_items_lock':
+          'تم بلوغ الحد الأقصى للعناصر الفريدة ({max}) من قائمة التشغيل. مقفلة نهائيًا.',
+      'status_must_wait_between_items':
+          'يجب الانتظار {duration} بين تشغيل عناصر مختلفة.',
+      'status_playlist_session_limit':
+          'تم بلوغ حد الجلسة: {max} عناصر لكل جلسة. سيتم إعادة التعيين خلال {duration}',
+      'status_playlist_session_limit_no_reset':
+          'تم بلوغ حد الجلسة: {max} عناصر لكل جلسة.',
       'ui_media_label': 'الوسائط: {name}',
       'ui_no_play_limit': 'لا يوجد حد للتشغيل',
       'ui_resets_in': ' · يعاد التعيين خلال {duration}',
@@ -984,6 +1083,17 @@ class L10n {
       'status_must_wait': '播放之间需等待 {duration}。',
       'status_play_limit_reached': '已达到此媒体的播放限制。',
       'status_play_limit_reached_with_reset': '已达到播放限制。将在 {duration} 后重置',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          '播放列表已于 {date} 过期。永久锁定。',
+      'status_playlist_max_items_lock':
+          '已播放播放列表中的最大唯一项目数（{max}）。永久锁定。',
+      'status_must_wait_between_items':
+          '播放不同项目之间需等待 {duration}。',
+      'status_playlist_session_limit':
+          '已达到会话限制：每个会话 {max} 个项目。将在 {duration} 后重置',
+      'status_playlist_session_limit_no_reset':
+          '已达到会话限制：每个会话 {max} 个项目。',
       'ui_media_label': '媒体：{name}',
       'ui_no_play_limit': '无限制播放',
       'ui_resets_in': ' · 将在 {duration} 后重置',
@@ -1046,6 +1156,17 @@ class L10n {
           'Mak bilong pilai i kamap pinis long dispela media.',
       'status_play_limit_reached_with_reset':
           'Mak bilong pilai i kamap pinis. Bai stret gen long {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Plelist i pinis taim long {date}. I pas strong.',
+      'status_playlist_max_items_lock':
+          'Maksimum samting ({max}) long plelist i pilai pinis. I pas strong.',
+      'status_must_wait_between_items':
+          'Mas wet {duration} namel long pilai narapela samting.',
+      'status_playlist_session_limit':
+          'Mak bilong sesen i kamap: {max} samting long wan sesen. Bai stret gen long {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Mak bilong sesen i kamap: {max} samting long wan sesen.',
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Nogat mak bilong pilai',
       'ui_resets_in': ' · bai stret gen long {duration}',
