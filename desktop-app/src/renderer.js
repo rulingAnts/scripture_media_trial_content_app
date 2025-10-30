@@ -66,7 +66,7 @@ function calculatePlaylistLimits() {
   
   // Validate maxItemsPerSession
   if (maxItemsPerSession !== null && (isNaN(maxItemsPerSession) || maxItemsPerSession < 1)) {
-    throw new Error('Max items per session must be a positive number');
+    throw new Error('Max items per session must be at least 1');
   }
   
   const sessionDays = Math.max(0, parseInt(sessionResetDaysInput.value) || 0);
@@ -84,7 +84,7 @@ function calculatePlaylistLimits() {
   
   // Validate maxTotalItemsPlayed
   if (maxTotalItemsPlayed !== null && (isNaN(maxTotalItemsPlayed) || maxTotalItemsPlayed < 1)) {
-    throw new Error('Max total items played must be a positive number');
+    throw new Error('Max total items played must be at least 1');
   }
   
   const playlistExpirationValue = playlistExpirationDateInput.value;
@@ -99,8 +99,8 @@ function calculatePlaylistLimits() {
   
   return {
     maxItemsPerSession: maxItemsPerSession,
-    sessionResetIntervalMs: sessionResetMs || null,
-    minIntervalBetweenItemsMs: minIntervalBetweenItemsMs || null,
+    sessionResetIntervalMs: sessionResetMs > 0 ? sessionResetMs : null,
+    minIntervalBetweenItemsMs: minIntervalBetweenItemsMs > 0 ? minIntervalBetweenItemsMs : null,
     maxTotalItemsPlayed: maxTotalItemsPlayed,
     expirationDate: playlistExpiration
   };
