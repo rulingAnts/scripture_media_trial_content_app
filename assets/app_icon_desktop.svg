@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D5BFF"/>
+      <stop offset="100%" stop-color="#7A3BFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feOffset dx="0" dy="8"/>
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.25 0"/>
+      <feBlend in="SourceGraphic" mode="normal"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+
+  <!-- Book (Bible) silhouette with bookmark -->
+  <g transform="translate(210,220)" filter="url(#shadow)">
+    <rect x="0" y="0" width="380" height="540" rx="28" fill="#FFFFFF" opacity="0.95"/>
+    <rect x="18" y="24" width="344" height="492" rx="14" fill="#F2F4FF"/>
+    <path d="M310 24 L360 24 L360 220 L335 200 L310 220 Z" fill="#FF3D71"/>
+    <!-- Cross (subtle) -->
+    <rect x="180" y="120" width="16" height="180" fill="#D7DBFF"/>
+    <rect x="132" y="168" width="112" height="16" fill="#D7DBFF"/>
+  </g>
+
+  <!-- Play button overlaid (media) -->
+  <g transform="translate(520,330)" filter="url(#shadow)">
+    <circle cx="192" cy="192" r="160" fill="#111827" opacity="0.85"/>
+    <polygon points="160,120 160,264 284,192" fill="#10B981"/>
+  </g>
+
+  <!-- Wrench (testing/build) -->
+  <g transform="translate(620,620) rotate(-20)">
+    <path d="M120 20a40 40 0 1 1-50 50L30 110l20 20-80 80 30 30 80-80 20 20 40-40a40 40 0 0 1 50-50l-35 35 30 30 35-35a70 70 0 0 0-100-100z" fill="#F59E0B" opacity="0.95"/>
+  </g>
+
+  <!-- Audio waves (hint) -->
+  <g stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.7">
+    <path d="M750 280 q40 30 0 60" fill="none"/>
+    <path d="M790 250 q60 50 0 100" fill="none"/>
+  </g>
+
+  <!-- Package (bundle) with large arrow entering (more prominent, bottom-left quarter) -->
+  <g transform="translate(60,560)" filter="url(#shadow)">
+    <!-- Top (open) surface -->
+    <polygon points="0,120 210,40 420,120 210,200" fill="#E7B567"/>
+    <!-- Left side -->
+    <polygon points="0,120 0,280 210,360 210,200" fill="#B07D3B" opacity="0.95"/>
+    <!-- Right side -->
+    <polygon points="420,120 420,280 210,360 210,200" fill="#C08C45" opacity="0.95"/>
+    <!-- Open top flaps (clearly visible) -->
+    <polygon points="0,120 210,40 120,-30 -90,50" fill="#E7B567" opacity="0.95"/>
+    <polygon points="420,120 210,40 300,-30 630,50" fill="#E7B567" opacity="0.95"/>
+    <!-- Downward arrow into the box center -->
+    <path d="M210,-140 L210,30" stroke="#10B981" stroke-width="28" stroke-linecap="round"/>
+    <polygon points="210,30 170,-10 250,-10" fill="#10B981"/>
+  </g>
+</svg>

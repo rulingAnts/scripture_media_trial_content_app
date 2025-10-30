@@ -6,21 +6,24 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "icons": "node scripts/generate_icons.js",
+    "build": "npm run icons && electron-builder",
+    "build:win": "npm run icons && electron-builder --win",
+    "build:mac": "npm run icons && electron-builder --mac",
+    "build:linux": "npm run icons && electron-builder --linux"
   },
   "dependencies": {
     "@scripture-media/shared": "file:../shared",
     "crypto-js": "^4.2.0",
-    "uuid": "^9.0.0",
+    "node-stream-zip": "^1.15.0",
     "tar": "^6.2.0",
-    "node-stream-zip": "^1.15.0"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "electron": "^38.3.0",
-    "electron-builder": "^24.0.0"
+    "electron-builder": "^24.0.0",
+    "icon-gen": "^3.0.1",
+    "sharp": "^0.33.5"
   },
   "build": {
     "appId": "com.scripture.media.bundler",
@@ -32,6 +35,7 @@
       "src/**/*",
       "package.json"
     ],
+    "icon": "build/icon.png",
     "win": {
       "target": "nsis"
     },
