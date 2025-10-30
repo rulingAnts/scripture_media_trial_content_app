@@ -1193,7 +1193,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // Log error and show user-friendly message
         if (mounted) {
           setState(() {
-            _status = _t('status_error_generic', {'message': 'Failed to receive file'});
+            _status = _t('status_error_generic', {'message': 'Failed to receive shared file'});
           });
         }
       },
