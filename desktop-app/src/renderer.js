@@ -64,21 +64,38 @@ function calculatePlaylistLimits() {
   const maxItemsSessionValue = playlistMaxItemsSessionInput.value.trim();
   const maxItemsPerSession = maxItemsSessionValue ? parseInt(maxItemsSessionValue) : null;
   
-  const sessionDays = parseInt(sessionResetDaysInput.value) || 0;
-  const sessionHours = parseInt(sessionResetHoursInput.value) || 0;
-  const sessionMinutes = parseInt(sessionResetMinutesInput.value) || 0;
+  // Validate maxItemsPerSession
+  if (maxItemsPerSession !== null && (isNaN(maxItemsPerSession) || maxItemsPerSession < 1)) {
+    throw new Error('Max items per session must be a positive number');
+  }
+  
+  const sessionDays = Math.max(0, parseInt(sessionResetDaysInput.value) || 0);
+  const sessionHours = Math.max(0, parseInt(sessionResetHoursInput.value) || 0);
+  const sessionMinutes = Math.max(0, parseInt(sessionResetMinutesInput.value) || 0);
   const sessionResetMs = (sessionDays * 24 * 60 * 60 * 1000) + (sessionHours * 60 * 60 * 1000) + (sessionMinutes * 60 * 1000);
   
-  const playlistIntervalDays = parseInt(playlistIntervalDaysInput.value) || 0;
-  const playlistIntervalHours = parseInt(playlistIntervalHoursInput.value) || 0;
-  const playlistIntervalMinutes = parseInt(playlistIntervalMinutesInput.value) || 0;
+  const playlistIntervalDays = Math.max(0, parseInt(playlistIntervalDaysInput.value) || 0);
+  const playlistIntervalHours = Math.max(0, parseInt(playlistIntervalHoursInput.value) || 0);
+  const playlistIntervalMinutes = Math.max(0, parseInt(playlistIntervalMinutesInput.value) || 0);
   const minIntervalBetweenItemsMs = (playlistIntervalDays * 24 * 60 * 60 * 1000) + (playlistIntervalHours * 60 * 60 * 1000) + (playlistIntervalMinutes * 60 * 1000);
   
   const maxTotalItemsValue = playlistMaxTotalItemsInput.value.trim();
   const maxTotalItemsPlayed = maxTotalItemsValue ? parseInt(maxTotalItemsValue) : null;
   
+  // Validate maxTotalItemsPlayed
+  if (maxTotalItemsPlayed !== null && (isNaN(maxTotalItemsPlayed) || maxTotalItemsPlayed < 1)) {
+    throw new Error('Max total items played must be a positive number');
+  }
+  
   const playlistExpirationValue = playlistExpirationDateInput.value;
-  const playlistExpiration = playlistExpirationValue ? new Date(playlistExpirationValue).toISOString() : null;
+  let playlistExpiration = null;
+  if (playlistExpirationValue) {
+    const expirationDate = new Date(playlistExpirationValue);
+    if (isNaN(expirationDate.getTime())) {
+      throw new Error('Invalid playlist expiration date');
+    }
+    playlistExpiration = expirationDate.toISOString();
+  }
   
   return {
     maxItemsPerSession: maxItemsPerSession,
@@ -250,6 +267,15 @@ async function handleCreateBundle() {
       }
     }
 
+    // Validate and calculate playlist limits
+    let playlistLimits;
+    try {
+      playlistLimits = calculatePlaylistLimits();
+    } catch (error) {
+      showError(error.message);
+      return;
+    }
+
     // Select output directory
     const outputDir = await ipcRenderer.invoke('select-output-directory');
     if (!outputDir) {
@@ -261,8 +287,6 @@ async function handleCreateBundle() {
     createBundleButton.disabled = true;
 
     // Create bundle
-    const playlistLimits = calculatePlaylistLimits();
-    
     const result = await ipcRenderer.invoke('create-bundle', {
       name: bundleName,
       deviceIds,
