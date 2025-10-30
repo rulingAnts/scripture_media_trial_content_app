@@ -62,6 +62,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _playChargeTimer;
   bool _sessionActive = false;
   bool _sessionCharged = false;
+  // Persisted auto-charge scheduling
+  static const String _pendingPrefix = 'pendingCharge';
 
   @override
   void initState() {
@@ -152,8 +154,7 @@ class _MyHomePageState extends State<MyHomePage> {
             return;
           }
           config = json.decode(utf8.decode(decrypted)) as Map<String, dynamic>;
-          _bundleConfig = config;
-          setState(() => _status = 'Config loaded.');
+          // Do not assign to _bundleConfig here; finalize only after policy checks pass
         } catch (e) {
           await _deleteDirectory(Directory(extractionPath));
           setState(() => _status = 'Error: Cannot open bundle config.');
@@ -184,42 +185,89 @@ class _MyHomePageState extends State<MyHomePage> {
         return;
       }
 
-      // Decrypt media files in media/ using deviceKey (CryptoJS AES(passphrase) compatible)
-      setState(() => _status = 'Decrypting media…');
-      final mediaDir = Directory('$extractionPath/media');
-      final outDir = Directory('$extractionPath/decrypted');
-      await outDir.create(recursive: true);
-      final deviceKey = _generateDeviceKey(_deviceId, _saltConst);
+      // Decide import policy based on bundleId and previously seen bundles
+      final String bundleId = (config['bundleId'] as String?) ?? 'unknown';
+      final prefs = await SharedPreferences.getInstance();
+      final String? activeBundleId = prefs.getString('activeBundleId');
+      final List<String> seenBundles =
+          (prefs.getStringList('seenBundleIds') ?? <String>[]).toList();
 
+      // If attempting to switch back to an older, previously seen bundle, block it
+      if (activeBundleId != null &&
+          activeBundleId != bundleId &&
+          seenBundles.contains(bundleId)) {
+        await _deleteDirectory(Directory(extractionPath));
+        setState(
+          () => _status =
+              'This bundle was previously used and cannot be re-imported.',
+        );
+        return;
+      }
+
+      // If attempting to re-import the currently active bundle, do nothing
+      if (activeBundleId != null && activeBundleId == bundleId) {
+        await _deleteDirectory(Directory(extractionPath));
+        setState(() => _status = 'Bundle already active. No changes made.');
+        return;
+      }
+
+      // Prepare persistent content directory
+      final docs = await getApplicationDocumentsDirectory();
+      final contentDir = Directory('${docs.path}/content');
+      await contentDir.create(recursive: true);
+
+      // If importing a different, new bundle: clear previous content and reset active
+      // Clear any pending charges for the previous bundle
+      await _clearAllPendingChargesForBundle(activeBundleId);
+
+      final bool importingNewBundle =
+          activeBundleId == null || activeBundleId != bundleId;
+      if (importingNewBundle) {
+        // Clear previous content
+        await _deleteDirectory(contentDir);
+        await contentDir.create(recursive: true);
+      }
+
+      // Decrypt media based on config mapping so filenames match original fileName
+      setState(() => _status = 'Decrypting media…');
+      final deviceKey = _generateDeviceKey(_deviceId, _saltConst);
       File? firstDecrypted;
-      if (await mediaDir.exists()) {
-        await for (final entity in mediaDir.list(recursive: false)) {
-          if (entity is File && entity.path.endsWith('.enc')) {
-            try {
-              final encText = await entity.readAsString();
-              final plainBytes = _cryptoJsAesDecrypt(encText, deviceKey);
-              if (plainBytes == null) continue;
-              // Media plaintext is base64 of original bytes
-              final mediaBytes = base64.decode(utf8.decode(plainBytes));
-              final originalName = entity.uri.pathSegments.last.replaceAll(
-                '.enc',
-                '',
-              );
-              final outPath = '${outDir.path}/$originalName';
-              final outFile = File(outPath);
-              await outFile.writeAsBytes(mediaBytes);
-              firstDecrypted ??= outFile;
-            } catch (_) {
-              // skip bad file
-            }
-          }
+      final List<dynamic> mediaList =
+          (config['mediaFiles'] as List?) ?? <dynamic>[];
+      for (final item in mediaList) {
+        if (item is! Map) continue;
+        final encPath = item['encryptedPath'] as String?;
+        final origName = item['fileName'] as String?;
+        if (encPath == null || origName == null) continue;
+        final srcFile = File('$extractionPath/$encPath');
+        if (!await srcFile.exists()) continue;
+        try {
+          final encText = await srcFile.readAsString();
+          final plainBytes = _cryptoJsAesDecrypt(encText, deviceKey);
+          if (plainBytes == null) continue;
+          final mediaBytes = base64.decode(utf8.decode(plainBytes));
+          final outFile = File('${contentDir.path}/$origName');
+          await outFile.writeAsBytes(mediaBytes);
+          firstDecrypted ??= outFile;
+        } catch (_) {
+          // skip bad file
         }
       }
 
-      // Refresh decrypted file list for the UI
+      // Persist bundle state and file list
+      // Assign the verified config now that import succeeded
+      _bundleConfig = config;
+      // Update seen/active bundle tracking
+      if (!seenBundles.contains(bundleId)) {
+        seenBundles.add(bundleId);
+        await prefs.setStringList('seenBundleIds', seenBundles);
+      }
+      await prefs.setString('activeBundleId', bundleId);
+
+      // Build decrypted file list from persistent content dir
       final files = <File>[];
-      if (await outDir.exists()) {
-        await for (final entity in outDir.list(recursive: false)) {
+      if (await contentDir.exists()) {
+        await for (final entity in contentDir.list(recursive: false)) {
           if (entity is File) files.add(entity);
         }
       }
@@ -229,7 +277,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _initializePlayer(firstDecrypted.path);
         setState(() {
           _decryptedFiles = files..sort((a, b) => a.path.compareTo(b.path));
-          _status = 'Decrypted and ready.';
+          _status = 'Imported bundle and ready.';
         });
       } else {
         setState(() {
@@ -237,6 +285,12 @@ class _MyHomePageState extends State<MyHomePage> {
           _status = 'No playable media for this device.';
         });
       }
+
+      // Delete extracted temp and original bundle file after successful import
+      await _deleteDirectory(Directory(extractionPath));
+      try {
+        await File(bundlePath).delete();
+      } catch (_) {}
     } catch (e) {
       if (!mounted) return;
       setState(() => _status = 'Error: $e');
@@ -318,6 +372,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _attemptAutoPlay() async {
     if (_controller == null) return;
+    // Before deciding, process any overdue pending charges
+    await _processPendingCharges();
     if (!await _canPlayCurrent()) {
       final id = _currentMediaId;
       Duration? rem;
@@ -338,6 +394,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     _startPlaySession();
     _controller!.play();
+    // If there was a persisted pending for this media from a prior run, ensure a timer is armed
+    await _scheduleTimerFromPending();
   }
 
   Future<void> _stopPlayback() async {
@@ -373,7 +431,15 @@ class _MyHomePageState extends State<MyHomePage> {
     if (m == null) return null;
     final Map<String, dynamic>? limit = (m['playbackLimit'] as Map?)
         ?.cast<String, dynamic>();
-    final int? maxPlays = limit?['maxPlays'] as int?;
+    int? maxPlays = limit?['maxPlays'] as int?;
+    if (maxPlays == null) {
+      final cfg = _bundleConfig;
+      final Map<String, dynamic>? defaults = (cfg?['playbackLimits'] as Map?)
+          ?.cast<String, dynamic>();
+      final Map<String, dynamic>? def = (defaults?['default'] as Map?)
+          ?.cast<String, dynamic>();
+      maxPlays = (def?['maxPlays'] as num?)?.toInt();
+    }
     return maxPlays;
   }
 
@@ -468,14 +534,12 @@ class _MyHomePageState extends State<MyHomePage> {
     final duration = _controller!.value.duration;
     if (duration > Duration.zero) {
       final chargeAfter = Duration(
-        milliseconds: (duration.inMilliseconds * 1.5).round(),
+        milliseconds: (duration.inMilliseconds * 1.25).round(),
       );
+      // Persist a pending charge deadline so app exit/crash cannot bypass it
+      _persistPendingCharge(chargeAfter);
       _playChargeTimer = Timer(chargeAfter, () async {
-        if (!_sessionCharged && _currentMediaId != null) {
-          await _incrementPlaysUsed(_currentMediaId!);
-          _sessionCharged = true;
-          if (mounted) setState(() {});
-        }
+        await _forceChargeAndStop();
       });
     }
   }
@@ -487,10 +551,109 @@ class _MyHomePageState extends State<MyHomePage> {
           (_controller?.value.position ?? Duration.zero) > Duration.zero;
       if (hadProgress && !_sessionCharged && _currentMediaId != null) {
         await _incrementPlaysUsed(_currentMediaId!);
+        await _clearPendingForCurrent();
       }
     }
     _sessionActive = false;
     _sessionCharged = false;
+  }
+
+  // ===== Pending charge persistence and enforcement =====
+  String _bundleIdOrUnknown() =>
+      (_bundleConfig != null
+          ? (_bundleConfig!['bundleId'] as String?)
+          : null) ??
+      'unknown';
+
+  Future<void> _persistPendingCharge(Duration chargeAfter) async {
+    final id = _currentMediaId;
+    if (id == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final chargeAt = now + chargeAfter.inMilliseconds;
+    final key = '$_pendingPrefix:${_bundleIdOrUnknown()}:$id';
+    await prefs.setInt(key, chargeAt);
+  }
+
+  Future<int?> _getPendingFor(String bundleId, String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_pendingPrefix:$bundleId:$fileName';
+    return prefs.getInt(key);
+  }
+
+  Future<void> _clearPendingForCurrent() async {
+    final id = _currentMediaId;
+    if (id == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_pendingPrefix:${_bundleIdOrUnknown()}:$id';
+    await prefs.remove(key);
+  }
+
+  Future<void> _scheduleTimerFromPending() async {
+    final id = _currentMediaId;
+    if (id == null) return;
+    final bundleId = _bundleIdOrUnknown();
+    final pending = await _getPendingFor(bundleId, id);
+    if (pending == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final remainingMs = pending - now;
+    _playChargeTimer?.cancel();
+    if (remainingMs <= 0) {
+      await _forceChargeAndStop();
+    } else {
+      _playChargeTimer = Timer(Duration(milliseconds: remainingMs), () async {
+        await _forceChargeAndStop();
+      });
+    }
+  }
+
+  Future<void> _forceChargeAndStop() async {
+    if (_currentMediaId == null) return;
+    if (!_sessionCharged) {
+      await _incrementPlaysUsed(_currentMediaId!);
+      _sessionCharged = true;
+    }
+    await _clearPendingForCurrent();
+    try {
+      // Stop playback as part of enforcement
+      await _controller?.pause();
+      await _controller?.seekTo(Duration.zero);
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _processPendingCharges() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    if (keys.isEmpty) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final k in keys) {
+      if (!k.startsWith('$_pendingPrefix:')) continue;
+      final chargeAt = prefs.getInt(k);
+      if (chargeAt == null) continue;
+      if (chargeAt <= now) {
+        // Parse components: pendingCharge:bundleId:fileName
+        final parts = k.split(':');
+        if (parts.length >= 3) {
+          final fileName = parts.sublist(2).join(':');
+          await _incrementPlaysUsed(fileName);
+          await prefs.remove(k);
+        } else {
+          await prefs.remove(k);
+        }
+      }
+    }
+  }
+
+  Future<void> _clearAllPendingChargesForBundle(String? bundleId) async {
+    if (bundleId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    for (final k in keys) {
+      if (k.startsWith('$_pendingPrefix:$bundleId:')) {
+        await prefs.remove(k);
+      }
+    }
   }
 
   Future<void> _deleteDirectory(Directory dir) async {
@@ -529,13 +692,26 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadLastPlayed() async {
     final prefs = await SharedPreferences.getInstance();
+    await _processPendingCharges();
     final p = prefs.getString('lastPlayedPath');
     final c = prefs.getString('lastBundleConfig');
     if (p != null && await File(p).exists()) {
       if (c != null) {
         _bundleConfig = json.decode(c) as Map<String, dynamic>;
       }
+      // Rehydrate current content list from persistent content dir
+      final docs = await getApplicationDocumentsDirectory();
+      final contentDir = Directory('${docs.path}/content');
+      final files = <File>[];
+      if (await contentDir.exists()) {
+        await for (final entity in contentDir.list(recursive: false)) {
+          if (entity is File) files.add(entity);
+        }
+      }
+      _decryptedFiles = files..sort((a, b) => a.path.compareTo(b.path));
       _initializePlayer(p);
+      // If there is a pending for this media, re-arm timer on startup
+      await _scheduleTimerFromPending();
       if (!mounted) return;
       setState(() => _status = 'Loaded last played media.');
     }
