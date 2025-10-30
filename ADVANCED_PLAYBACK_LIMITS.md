@@ -4,14 +4,30 @@ This guide explains the advanced playback limit features added to the Scripture 
 
 ## Overview
 
-The app now supports four types of playback restrictions that can be combined to control media access:
+The app supports two levels of playback restrictions:
+
+### Per-File Limits
+Control individual media file playback with four types of restrictions:
 
 1. **Windowed Play Limits** - Maximum plays within a time window (existing feature, now with flexible time units)
 2. **Minimum Interval Between Plays** - Required waiting period between successive plays
 3. **Total Play Limit** - Absolute lifetime limit on number of plays
 4. **Expiration Date** - Date/time after which bundle becomes permanently locked
 
-## Feature Details
+### Playlist-Level Limits (NEW)
+Control overall usage across all files in the bundle. See [PLAYLIST_LIMITS.md](./PLAYLIST_LIMITS.md) for complete documentation:
+
+1. **Max Items Per Session** - Limit unique files that can be played in a session
+2. **Session Reset Interval** - Time window for session-based limits
+3. **Minimum Interval Between Items** - Required wait time between different files
+4. **Max Total Items Played** - Lifetime limit on unique files played
+5. **Playlist Expiration** - Separate expiration date for playlist access
+
+**Both levels work together - the most restrictive limit always applies.**
+
+---
+
+## Per-File Limit Details
 
 ### 1. Windowed Play Limits (Enhanced)
 
