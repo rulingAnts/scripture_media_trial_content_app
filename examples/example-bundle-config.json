@@ -1,7 +1,8 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "bundleId": "bundle_Luke_Gospel_Trial_1234567890",
   "createdAt": "2024-01-15T10:30:00.000Z",
+  "expirationDate": "2024-12-31T23:59:59.000Z",
   "allowedDeviceIds": [
     "abc123def456",
     "xyz789uvw012"
@@ -16,7 +17,9 @@
       "checksum": "a1b2c3d4e5f6...",
       "playbackLimit": {
         "maxPlays": 3,
-        "resetIntervalHours": 24
+        "resetIntervalMs": 86400000,
+        "minIntervalBetweenPlaysMs": 300000,
+        "maxPlaysTotal": 10
       }
     },
     {
@@ -27,15 +30,21 @@
       "encryptedPath": "media/550e8400-e29b-41d4-a716-446655440002.enc",
       "checksum": "b2c3d4e5f6a7...",
       "playbackLimit": {
-        "maxPlays": 3,
-        "resetIntervalHours": 24
+        "maxPlays": 5,
+        "resetIntervalMs": 43200000,
+        "minIntervalBetweenPlaysMs": null,
+        "maxPlaysTotal": null
       }
     }
   ],
   "playbackLimits": {
     "default": {
       "maxPlays": 3,
-      "resetIntervalHours": 24
+      "resetIntervalMs": 86400000,
+      "minIntervalBetweenPlaysMs": 300000,
+      "maxPlaysTotal": 10
     }
-  }
+  },
+  "bundleKey": "example-key-placeholder",
+  "integrity": "example-hash-placeholder"
 }

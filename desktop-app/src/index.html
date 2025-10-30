@@ -291,16 +291,59 @@
       <div class="section">
         <div class="section-title">Playback Limits</div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div class="form-group">
-            <label for="max-plays">Maximum Plays per File *</label>
-            <input type="number" id="max-plays" value="3" min="1" required>
-          </div>
+        <div class="form-group">
+          <label for="max-plays">Maximum Plays per Reset Period *</label>
+          <input type="number" id="max-plays" value="3" min="1" required>
+          <small style="color: #666;">Number of times media can be played before waiting for reset</small>
+        </div>
 
-          <div class="form-group">
-            <label for="reset-hours">Reset Interval (hours) *</label>
-            <input type="number" id="reset-hours" value="24" min="1" required>
+        <div class="form-group">
+          <label>Reset Interval *</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div>
+              <input type="number" id="reset-days" value="0" min="0" placeholder="Days">
+              <small style="display: block; color: #666;">Days</small>
+            </div>
+            <div>
+              <input type="number" id="reset-hours" value="24" min="0" placeholder="Hours">
+              <small style="display: block; color: #666;">Hours</small>
+            </div>
+            <div>
+              <input type="number" id="reset-minutes" value="0" min="0" placeholder="Minutes">
+              <small style="display: block; color: #666;">Minutes</small>
+            </div>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>Minimum Interval Between Plays (Optional)</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div>
+              <input type="number" id="interval-days" value="0" min="0" placeholder="Days">
+              <small style="display: block; color: #666;">Days</small>
+            </div>
+            <div>
+              <input type="number" id="interval-hours" value="0" min="0" placeholder="Hours">
+              <small style="display: block; color: #666;">Hours</small>
+            </div>
+            <div>
+              <input type="number" id="interval-minutes" value="0" min="0" placeholder="Minutes">
+              <small style="display: block; color: #666;">Minutes</small>
+            </div>
+          </div>
+          <small style="color: #666;">Required waiting time between each play (leave at 0 for no minimum)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="max-plays-total">Maximum Total Plays Ever (Optional)</label>
+          <input type="number" id="max-plays-total" value="" min="1" placeholder="Leave empty for no limit">
+          <small style="color: #666;">Absolute lifetime limit - media becomes permanently locked after this many plays</small>
+        </div>
+
+        <div class="form-group">
+          <label for="expiration-date">Bundle Expiration Date & Time (Optional)</label>
+          <input type="datetime-local" id="expiration-date">
+          <small style="color: #666;">Bundle becomes permanently locked after this date/time</small>
         </div>
       </div>
 
