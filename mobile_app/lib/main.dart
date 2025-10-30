@@ -62,8 +62,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _playChargeTimer;
   bool _sessionActive = false;
   bool _sessionCharged = false;
-  // Pending-play marker key prefix (to charge on next launch after crash/quit)
-  static const String _pendingPlayPrefix = 'pendingPlay';
+  // Track last saved position (ms) to throttle persistence
+  int _lastSavedPosMs = 0;
 
   @override
   void initState() {
@@ -362,6 +362,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _controller = VideoPlayerController.file(File(mediaPath))
       ..initialize().then((_) {
         if (!mounted) return;
+        // Attach listeners for position persistence and natural-end charging
+        _attachControllerListeners();
+        // Restore last saved position, if any (forward-only scrubbing still enforced)
+        _restoreSavedPosition();
         setState(() {});
         _attemptAutoPlay();
       });
@@ -411,7 +415,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (hadProgress && _currentMediaId != null) {
       await _incrementPlaysUsed(_currentMediaId!);
       _sessionCharged = true;
-      await _clearPendingPlayForCurrent();
+      await _clearSavedPosition(_currentMediaId!);
     }
     await _stopPlayback();
     _sessionActive = false;
@@ -539,8 +543,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _sessionActive = true;
     _sessionCharged = false;
     _playChargeTimer?.cancel();
-    // Mark a pending play so an app quit/crash will still count on next launch
-    _setPendingPlayForCurrent();
     // No auto-charge timer.
   }
 
@@ -551,49 +553,82 @@ class _MyHomePageState extends State<MyHomePage> {
           (_controller?.value.position ?? Duration.zero) > Duration.zero;
       if (hadProgress && !_sessionCharged && _currentMediaId != null) {
         await _incrementPlaysUsed(_currentMediaId!);
-        await _clearPendingPlayForCurrent();
+        await _clearSavedPosition(_currentMediaId!);
       }
     }
     _sessionActive = false;
     _sessionCharged = false;
   }
 
-  // Pending-play safeguard (no timers): charge on next launch if app quits/crashes mid-play
+  // ===== Position persistence & natural-end charging =====
   String _bundleIdOrUnknown() =>
       (_bundleConfig != null
           ? (_bundleConfig!['bundleId'] as String?)
           : null) ??
       'unknown';
 
-  Future<void> _setPendingPlayForCurrent() async {
-    final id = _currentMediaId;
-    if (id == null) return;
+  String? get _currentFileName => _currentMediaId;
+
+  Future<void> _savePosition(String fileName, int posMs) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_pendingPlayPrefix:${_bundleIdOrUnknown()}:$id';
-    await prefs.setBool(key, true);
+    final key = 'pos:${_bundleIdOrUnknown()}:$fileName';
+    await prefs.setInt(key, posMs);
   }
 
-  Future<void> _clearPendingPlayForCurrent() async {
-    final id = _currentMediaId;
-    if (id == null) return;
+  Future<int> _loadSavedPositionMs(String fileName) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_pendingPlayPrefix:${_bundleIdOrUnknown()}:$id';
+    final key = 'pos:${_bundleIdOrUnknown()}:$fileName';
+    return prefs.getInt(key) ?? 0;
+  }
+
+  Future<void> _clearSavedPosition(String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'pos:${_bundleIdOrUnknown()}:$fileName';
     await prefs.remove(key);
   }
 
-  Future<void> _processPendingPlays() async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys();
-    if (keys.isEmpty) return;
-    for (final k in keys) {
-      if (!k.startsWith('$_pendingPlayPrefix:')) continue;
-      final parts = k.split(':');
-      if (parts.length >= 3) {
-        final fileName = parts.sublist(2).join(':');
-        await _incrementPlaysUsed(fileName);
-      }
-      await prefs.remove(k);
+  Future<void> _restoreSavedPosition() async {
+    final c = _controller;
+    final name = _currentFileName;
+    if (c == null || name == null || !c.value.isInitialized) return;
+    final dur = c.value.duration;
+    if (dur == Duration.zero) return;
+    final savedMs = await _loadSavedPositionMs(name);
+    if (savedMs <= 0) return;
+    final clamped = savedMs.clamp(0, dur.inMilliseconds - 1);
+    if (clamped > 0) {
+      await c.seekTo(Duration(milliseconds: clamped));
+      _lastSavedPosMs = clamped;
     }
+  }
+
+  void _attachControllerListeners() {
+    final c = _controller;
+    if (c == null) return;
+    c.addListener(() async {
+      if (!mounted) return;
+      final value = c.value;
+      if (!value.isInitialized) return;
+      final name = _currentFileName;
+      if (name == null) return;
+      final posMs = value.position.inMilliseconds;
+      // Persist position roughly every second of forward progress
+      if (posMs - _lastSavedPosMs >= 1000) {
+        _lastSavedPosMs = posMs;
+        await _savePosition(name, posMs);
+      }
+      // Natural end detection: if at/near end and not yet charged for this session
+      final dur = value.duration;
+      if (dur > Duration.zero) {
+        final nearEnd =
+            value.position >= dur - const Duration(milliseconds: 250);
+        if (nearEnd && _sessionActive && !_sessionCharged) {
+          await _incrementPlaysUsed(name);
+          _sessionCharged = true;
+          await _clearSavedPosition(name);
+        }
+      }
+    });
   }
 
   Future<void> _deleteDirectory(Directory dir) async {
@@ -632,8 +667,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadLastPlayed() async {
     final prefs = await SharedPreferences.getInstance();
-    // Apply any pending plays left from a prior app exit/crash
-    await _processPendingPlays();
+    // No auto-charge on startup; position will be restored instead
     final p = prefs.getString('lastPlayedPath');
     final c = prefs.getString('lastBundleConfig');
     if (p != null && await File(p).exists()) {
