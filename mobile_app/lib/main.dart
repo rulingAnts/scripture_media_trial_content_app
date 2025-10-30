@@ -1190,7 +1190,12 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       },
       onError: (err) {
-        // Handle error
+        // Log error and show user-friendly message
+        if (mounted) {
+          setState(() {
+            _status = _t('status_error_generic', {'message': 'Failed to receive file'});
+          });
+        }
       },
     );
 
@@ -1205,12 +1210,18 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _handleSharedFile(String filePath) async {
-    if (!filePath.toLowerCase().endsWith('.smbundle')) {
-      setState(() => _status = _t('status_select_smbundle'));
-      return;
+    try {
+      if (!filePath.toLowerCase().endsWith('.smbundle')) {
+        setState(() => _status = _t('status_select_smbundle'));
+        return;
+      }
+      // Process the bundle using the existing logic
+      await _processBundle(filePath);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _status = _t('status_error_generic', {'message': '$e'}));
+      }
     }
-    // Process the bundle using the existing logic
-    await _processBundle(filePath);
   }
 
   Future<void> _pickAndProcessBundle() async {
