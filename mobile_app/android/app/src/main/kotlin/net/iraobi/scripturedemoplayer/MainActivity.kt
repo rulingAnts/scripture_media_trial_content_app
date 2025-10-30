@@ -1,4 +1,4 @@
-package com.example.mobile_app
+package net.iraobi.scripturedemoplayer
 
 import io.flutter.embedding.android.FlutterActivity
 

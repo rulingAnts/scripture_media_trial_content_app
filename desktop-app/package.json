@@ -27,7 +27,7 @@
   },
   "build": {
     "appId": "com.scripture.media.bundler",
-    "productName": "Scripture Media Bundler",
+    "productName": "Bundle Builder for Scripture Demo Player",
     "directories": {
       "output": "dist"
     },
