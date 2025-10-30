@@ -236,6 +236,17 @@ class L10n {
       'status_play_limit_reached': 'Play limit reached for this media.',
       'status_play_limit_reached_with_reset':
           'Play limit reached. Resets in {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Playlist expired on {date}. Permanently locked.',
+      'status_playlist_max_items_lock':
+          'Maximum unique items ({max}) from playlist already played. Permanently locked.',
+      'status_must_wait_between_items':
+          'Must wait {duration} between playing different items.',
+      'status_playlist_session_limit':
+          'Session limit reached: {max} items per session. Resets in {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Session limit reached: {max} items per session.',
       // UI labels
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'No play limit',
@@ -309,6 +320,17 @@ class L10n {
           'Se alcanzó el límite de reproducciones para este medio.',
       'status_play_limit_reached_with_reset':
           'Se alcanzó el límite de reproducciones. Se restablece en {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'La lista de reproducción expiró el {date}. Bloqueado permanentemente.',
+      'status_playlist_max_items_lock':
+          'Ya se reprodujeron los elementos únicos máximos ({max}) de la lista. Bloqueado permanentemente.',
+      'status_must_wait_between_items':
+          'Debes esperar {duration} entre reproducir diferentes elementos.',
+      'status_playlist_session_limit':
+          'Límite de sesión alcanzado: {max} elementos por sesión. Se restablece en {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Límite de sesión alcanzado: {max} elementos por sesión.',
       // Etiquetas UI
       'ui_media_label': 'Medio: {name}',
       'ui_no_play_limit': 'Sin límite de reproducciones',
@@ -1597,6 +1619,90 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       }
 
+      // === Playlist-level checks ===
+      await _ensurePlaylistSession();
+
+      // Check playlist expiration
+      final playlistExpirationStr = _playlistExpirationDate();
+      if (playlistExpirationStr != null) {
+        final playlistExpiration = DateTime.parse(playlistExpirationStr);
+        if (DateTime.now().isAfter(playlistExpiration)) {
+          setState(() {
+            _status = _t('status_playlist_expired_lock', {
+              'date': playlistExpiration.toLocal().toString(),
+            });
+          });
+          return;
+        }
+      }
+
+      // Check total unique items played
+      final maxTotalItems = _maxTotalItemsPlayed();
+      if (maxTotalItems != null) {
+        final totalItems = await _getTotalItemsPlayed();
+        if (totalItems.length >= maxTotalItems && !totalItems.contains(id)) {
+          setState(() {
+            _status = _t('status_playlist_max_items_lock', {
+              'max': '$maxTotalItems',
+            });
+          });
+          return;
+        }
+      }
+
+      // Check minimum interval between items
+      final minIntervalBetweenItems = _minIntervalBetweenItemsMs();
+      if (minIntervalBetweenItems != null && minIntervalBetweenItems > 0) {
+        final lastItemPlayTime = await _getLastItemPlayTime();
+        if (lastItemPlayTime != null) {
+          final timeSinceLastItem = now - lastItemPlayTime;
+          if (timeSinceLastItem < minIntervalBetweenItems) {
+            final remaining = Duration(
+              milliseconds: minIntervalBetweenItems - timeSinceLastItem,
+            );
+            setState(() {
+              _status = _t('status_must_wait_between_items', {
+                'duration': _fmtDur(remaining),
+              });
+            });
+            return;
+          }
+        }
+      }
+
+      // Check max items per session
+      final maxItems = _maxItemsPerSession();
+      if (maxItems != null) {
+        final sessionItems = await _getPlayedItemsInSession();
+        if (sessionItems.length >= maxItems && !sessionItems.contains(id)) {
+          final sessionResetMs = _sessionResetIntervalMs();
+          if (sessionResetMs != null) {
+            final sessionStartKey = 'playlistSession:$bundleId:start';
+            final sessionStart = prefs.getInt(sessionStartKey);
+            if (sessionStart != null) {
+              final elapsed = now - sessionStart;
+              final remaining = Duration(
+                milliseconds: sessionResetMs - elapsed,
+              );
+              setState(() {
+                _status = _t('status_playlist_session_limit', {
+                  'max': '$maxItems',
+                  'duration': _fmtDur(remaining),
+                });
+              });
+              return;
+            }
+          }
+          setState(() {
+            _status = _t('status_playlist_session_limit_no_reset', {
+              'max': '$maxItems',
+            });
+          });
+          return;
+        }
+      }
+
+      // === Per-file checks ===
       // Check total plays limit
       final maxPlaysTotal = _maxPlaysTotalFor(id);
       if (maxPlaysTotal != null) {
@@ -1780,6 +1886,129 @@ class _MyHomePageState extends State<MyHomePage> {
     return _bundleConfig?['expirationDate'] as String?;
   }
 
+  // ===== Playlist-level limit helpers =====
+  Map<String, dynamic>? _getPlaylistLimits() {
+    final cfg = _bundleConfig;
+    if (cfg == null) return null;
+    final limits = cfg['playlistLimits'] as Map?;
+    return limits?.cast<String, dynamic>();
+  }
+
+  int? _maxItemsPerSession() {
+    final limits = _getPlaylistLimits();
+    return (limits?['maxItemsPerSession'] as num?)?.toInt();
+  }
+
+  int? _sessionResetIntervalMs() {
+    final limits = _getPlaylistLimits();
+    return (limits?['sessionResetIntervalMs'] as num?)?.toInt();
+  }
+
+  int? _minIntervalBetweenItemsMs() {
+    final limits = _getPlaylistLimits();
+    return (limits?['minIntervalBetweenItemsMs'] as num?)?.toInt();
+  }
+
+  int? _maxTotalItemsPlayed() {
+    final limits = _getPlaylistLimits();
+    return (limits?['maxTotalItemsPlayed'] as num?)?.toInt();
+  }
+
+  String? _playlistExpirationDate() {
+    final limits = _getPlaylistLimits();
+    return limits?['expirationDate'] as String?;
+  }
+
+  Future<Set<String>> _getPlayedItemsInSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:items';
+    final items = prefs.getStringList(key) ?? [];
+    return items.toSet();
+  }
+
+  Future<void> _addItemToSession(String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:items';
+    final items = (prefs.getStringList(key) ?? []).toSet();
+    items.add(fileName);
+    await prefs.setStringList(key, items.toList());
+
+    // Update session start time if not set
+    final sessionStartKey = 'playlistSession:$bundleId:start';
+    if (!prefs.containsKey(sessionStartKey)) {
+      await prefs.setInt(sessionStartKey, DateTime.now().millisecondsSinceEpoch);
+    }
+  }
+
+  Future<void> _ensurePlaylistSession() async {
+    final resetIntervalMs = _sessionResetIntervalMs();
+    if (resetIntervalMs == null) return; // No session reset configured
+
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final sessionStartKey = 'playlistSession:$bundleId:start';
+    final sessionItemsKey = 'playlistSession:$bundleId:items';
+
+    final sessionStart = prefs.getInt(sessionStartKey);
+    if (sessionStart == null) return; // No session started yet
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final elapsed = now - sessionStart;
+
+    if (elapsed >= resetIntervalMs) {
+      // Session expired, reset
+      await prefs.remove(sessionStartKey);
+      await prefs.remove(sessionItemsKey);
+    }
+  }
+
+  Future<Set<String>> _getTotalItemsPlayed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:items';
+    final items = prefs.getStringList(key) ?? [];
+    return items.toSet();
+  }
+
+  Future<void> _addItemToTotalPlayed(String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:items';
+    final items = (prefs.getStringList(key) ?? []).toSet();
+    items.add(fileName);
+    await prefs.setStringList(key, items.toList());
+  }
+
+  Future<int?> _getLastItemPlayTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistLastItemPlay:$bundleId';
+    return prefs.getInt(key);
+  }
+
+  Future<void> _updateLastItemPlayTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistLastItemPlay:$bundleId';
+    await prefs.setInt(key, DateTime.now().millisecondsSinceEpoch);
+  }
+
   Future<void> _incrementPlaysUsed(String fileName) async {
     final prefs = await SharedPreferences.getInstance();
     final bundleId = _bundleConfig != null
@@ -1800,6 +2029,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Update last play time
     await prefs.setInt(lastPlayKey, DateTime.now().millisecondsSinceEpoch);
+
+    // Track playlist-level plays
+    await _addItemToSession(fileName);
+    await _addItemToTotalPlayed(fileName);
+    await _updateLastItemPlayTime();
   }
 
   Future<bool> _canPlayCurrent() async {
@@ -1830,6 +2064,52 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
+    // === Playlist-level checks ===
+    // Ensure session window
+    await _ensurePlaylistSession();
+
+    // Check playlist expiration
+    final playlistExpirationStr = _playlistExpirationDate();
+    if (playlistExpirationStr != null) {
+      final playlistExpiration = DateTime.parse(playlistExpirationStr);
+      if (DateTime.now().isAfter(playlistExpiration)) {
+        return false;
+      }
+    }
+
+    // Check total unique items played across lifetime
+    final maxTotalItems = _maxTotalItemsPlayed();
+    if (maxTotalItems != null) {
+      final totalItems = await _getTotalItemsPlayed();
+      if (totalItems.length >= maxTotalItems && !totalItems.contains(id)) {
+        // Already at limit and this is a new item
+        return false;
+      }
+    }
+
+    // Check minimum interval between playing different items
+    final minIntervalBetweenItems = _minIntervalBetweenItemsMs();
+    if (minIntervalBetweenItems != null && minIntervalBetweenItems > 0) {
+      final lastItemPlayTime = await _getLastItemPlayTime();
+      if (lastItemPlayTime != null) {
+        final timeSinceLastItem = now - lastItemPlayTime;
+        if (timeSinceLastItem < minIntervalBetweenItems) {
+          return false;
+        }
+      }
+    }
+
+    // Check max items per session
+    final maxItems = _maxItemsPerSession();
+    if (maxItems != null) {
+      final sessionItems = await _getPlayedItemsInSession();
+      if (sessionItems.length >= maxItems && !sessionItems.contains(id)) {
+        // Already at session limit and this is a new item
+        return false;
+      }
+    }
+
+    // === Per-file checks ===
     // Check total plays limit
     final maxPlaysTotal = _maxPlaysTotalFor(id);
     if (maxPlaysTotal != null) {
