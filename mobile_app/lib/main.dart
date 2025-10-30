@@ -62,8 +62,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _playChargeTimer;
   bool _sessionActive = false;
   bool _sessionCharged = false;
-  // Persisted auto-charge scheduling
-  static const String _pendingPrefix = 'pendingCharge';
+  // Pending-play marker key prefix (to charge on next launch after crash/quit)
+  static const String _pendingPlayPrefix = 'pendingPlay';
 
   @override
   void initState() {
@@ -217,9 +217,6 @@ class _MyHomePageState extends State<MyHomePage> {
       await contentDir.create(recursive: true);
 
       // If importing a different, new bundle: clear previous content and reset active
-      // Clear any pending charges for the previous bundle
-      await _clearAllPendingChargesForBundle(activeBundleId);
-
       final bool importingNewBundle =
           activeBundleId == null || activeBundleId != bundleId;
       if (importingNewBundle) {
@@ -372,8 +369,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _attemptAutoPlay() async {
     if (_controller == null) return;
-    // Before deciding, process any overdue pending charges
-    await _processPendingCharges();
+    // No pending-charge processing; pausing allowed indefinitely.
     if (!await _canPlayCurrent()) {
       final id = _currentMediaId;
       Duration? rem;
@@ -394,8 +390,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     _startPlaySession();
     _controller!.play();
-    // If there was a persisted pending for this media from a prior run, ensure a timer is armed
-    await _scheduleTimerFromPending();
+    // No persisted timers.
   }
 
   Future<void> _stopPlayback() async {
@@ -407,6 +402,19 @@ class _MyHomePageState extends State<MyHomePage> {
     } catch (_) {
       // ignore
     }
+  }
+
+  Future<void> _stopAndCharge() async {
+    final c = _controller;
+    if (c == null) return;
+    final hadProgress = c.value.position > Duration.zero;
+    if (hadProgress && _currentMediaId != null) {
+      await _incrementPlaysUsed(_currentMediaId!);
+      _sessionCharged = true;
+      await _clearPendingPlayForCurrent();
+    }
+    await _stopPlayback();
+    _sessionActive = false;
   }
 
   // ===== Play-limit, session, and counting logic =====
@@ -531,17 +539,9 @@ class _MyHomePageState extends State<MyHomePage> {
     _sessionActive = true;
     _sessionCharged = false;
     _playChargeTimer?.cancel();
-    final duration = _controller!.value.duration;
-    if (duration > Duration.zero) {
-      final chargeAfter = Duration(
-        milliseconds: (duration.inMilliseconds * 1.25).round(),
-      );
-      // Persist a pending charge deadline so app exit/crash cannot bypass it
-      _persistPendingCharge(chargeAfter);
-      _playChargeTimer = Timer(chargeAfter, () async {
-        await _forceChargeAndStop();
-      });
-    }
+    // Mark a pending play so an app quit/crash will still count on next launch
+    _setPendingPlayForCurrent();
+    // No auto-charge timer.
   }
 
   Future<void> _finalizePlaySession() async {
@@ -551,108 +551,48 @@ class _MyHomePageState extends State<MyHomePage> {
           (_controller?.value.position ?? Duration.zero) > Duration.zero;
       if (hadProgress && !_sessionCharged && _currentMediaId != null) {
         await _incrementPlaysUsed(_currentMediaId!);
-        await _clearPendingForCurrent();
+        await _clearPendingPlayForCurrent();
       }
     }
     _sessionActive = false;
     _sessionCharged = false;
   }
 
-  // ===== Pending charge persistence and enforcement =====
+  // Pending-play safeguard (no timers): charge on next launch if app quits/crashes mid-play
   String _bundleIdOrUnknown() =>
       (_bundleConfig != null
           ? (_bundleConfig!['bundleId'] as String?)
           : null) ??
       'unknown';
 
-  Future<void> _persistPendingCharge(Duration chargeAfter) async {
+  Future<void> _setPendingPlayForCurrent() async {
     final id = _currentMediaId;
     if (id == null) return;
     final prefs = await SharedPreferences.getInstance();
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final chargeAt = now + chargeAfter.inMilliseconds;
-    final key = '$_pendingPrefix:${_bundleIdOrUnknown()}:$id';
-    await prefs.setInt(key, chargeAt);
+    final key = '$_pendingPlayPrefix:${_bundleIdOrUnknown()}:$id';
+    await prefs.setBool(key, true);
   }
 
-  Future<int?> _getPendingFor(String bundleId, String fileName) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = '$_pendingPrefix:$bundleId:$fileName';
-    return prefs.getInt(key);
-  }
-
-  Future<void> _clearPendingForCurrent() async {
+  Future<void> _clearPendingPlayForCurrent() async {
     final id = _currentMediaId;
     if (id == null) return;
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_pendingPrefix:${_bundleIdOrUnknown()}:$id';
+    final key = '$_pendingPlayPrefix:${_bundleIdOrUnknown()}:$id';
     await prefs.remove(key);
   }
 
-  Future<void> _scheduleTimerFromPending() async {
-    final id = _currentMediaId;
-    if (id == null) return;
-    final bundleId = _bundleIdOrUnknown();
-    final pending = await _getPendingFor(bundleId, id);
-    if (pending == null) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final remainingMs = pending - now;
-    _playChargeTimer?.cancel();
-    if (remainingMs <= 0) {
-      await _forceChargeAndStop();
-    } else {
-      _playChargeTimer = Timer(Duration(milliseconds: remainingMs), () async {
-        await _forceChargeAndStop();
-      });
-    }
-  }
-
-  Future<void> _forceChargeAndStop() async {
-    if (_currentMediaId == null) return;
-    if (!_sessionCharged) {
-      await _incrementPlaysUsed(_currentMediaId!);
-      _sessionCharged = true;
-    }
-    await _clearPendingForCurrent();
-    try {
-      // Stop playback as part of enforcement
-      await _controller?.pause();
-      await _controller?.seekTo(Duration.zero);
-    } catch (_) {}
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _processPendingCharges() async {
+  Future<void> _processPendingPlays() async {
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys();
     if (keys.isEmpty) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
     for (final k in keys) {
-      if (!k.startsWith('$_pendingPrefix:')) continue;
-      final chargeAt = prefs.getInt(k);
-      if (chargeAt == null) continue;
-      if (chargeAt <= now) {
-        // Parse components: pendingCharge:bundleId:fileName
-        final parts = k.split(':');
-        if (parts.length >= 3) {
-          final fileName = parts.sublist(2).join(':');
-          await _incrementPlaysUsed(fileName);
-          await prefs.remove(k);
-        } else {
-          await prefs.remove(k);
-        }
+      if (!k.startsWith('$_pendingPlayPrefix:')) continue;
+      final parts = k.split(':');
+      if (parts.length >= 3) {
+        final fileName = parts.sublist(2).join(':');
+        await _incrementPlaysUsed(fileName);
       }
-    }
-  }
-
-  Future<void> _clearAllPendingChargesForBundle(String? bundleId) async {
-    if (bundleId == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys();
-    for (final k in keys) {
-      if (k.startsWith('$_pendingPrefix:$bundleId:')) {
-        await prefs.remove(k);
-      }
+      await prefs.remove(k);
     }
   }
 
@@ -692,7 +632,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadLastPlayed() async {
     final prefs = await SharedPreferences.getInstance();
-    await _processPendingCharges();
+    // Apply any pending plays left from a prior app exit/crash
+    await _processPendingPlays();
     final p = prefs.getString('lastPlayedPath');
     final c = prefs.getString('lastBundleConfig');
     if (p != null && await File(p).exists()) {
@@ -710,8 +651,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       _decryptedFiles = files..sort((a, b) => a.path.compareTo(b.path));
       _initializePlayer(p);
-      // If there is a pending for this media, re-arm timer on startup
-      await _scheduleTimerFromPending();
+      // No pending timers to re-arm.
       if (!mounted) return;
       setState(() => _status = 'Loaded last played media.');
     }
@@ -803,7 +743,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    // Seek bar (scrubber)
+                    // Seek bar (scrubber) - forward-only (no backward scrubbing)
                     ValueListenableBuilder<VideoPlayerValue>(
                       valueListenable: _controller!,
                       builder: (context, value, _) {
@@ -823,9 +763,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           max: max <= 0 ? 1 : max,
                           value: val.isNaN ? 0 : val,
                           onChanged: (v) async {
-                            // allow scrubbing
+                            // clamp backward scrubs to current position
+                            final currentMs = position.inMilliseconds;
+                            final target = v < currentMs
+                                ? currentMs.toDouble()
+                                : v;
                             await _controller!.seekTo(
-                              Duration(milliseconds: v.toInt()),
+                              Duration(milliseconds: target.toInt()),
                             );
                             setState(() {});
                           },
@@ -887,8 +831,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               tooltip: 'Stop',
                               icon: const Icon(Icons.stop),
                               onPressed: () async {
-                                await _stopPlayback();
-                                await _finalizePlaySession();
+                                await _stopAndCharge();
                                 setState(() {});
                               },
                             ),
