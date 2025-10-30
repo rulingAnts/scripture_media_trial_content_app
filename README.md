@@ -105,6 +105,7 @@ npm run android
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+ - **[TODO.md](TODO.md)** - Roadmap and future playback‑limit options
 - **[examples/](examples/)** - Example bundle configurations
 
 ## Workflow Overview
