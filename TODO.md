@@ -2,7 +2,14 @@
 
 These are future enhancements to the bundle policy and playback-limit system. Current app already supports per-media/default max plays with reset windows and anti-bypass controls.
 
+## Other Features:
+- [ ] File association in Android OS so that smbundle files automatically open in our app.
+- [ ] Multilingual interface options for both Desktop app and Android app (and make the change persistent)l
+- [ ] Ability for Desktop app to open and edit smbundles (and adjust settings), default file association accordingly?
+- [ ] Fix outdated dependency warnings?
+
 ## Playback Limits: Next Iteration
+- [ ] Geofencing? So that the total number of plays can be reset or extra granted if the user has moved a certain distance (a long distance) away from the last place they played?
 - [ ] Granular per-media play allowance options
   - [ ] Add per-media explicit `maxPlays` override (default already exists) with validation
   - [ ] Support per-bundle and per-media priority rules (media override > bundle default)

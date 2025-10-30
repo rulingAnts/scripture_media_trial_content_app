@@ -1,0 +1,15 @@
+{
+  "name": "scripture-media-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root scripts for Scripture Media Trial Content App",
+  "scripts": {
+    "build:apk": "scripts/build_apk.sh",
+    "build:apk:release": "scripts/build_apk.sh --release --no-install",
+    "build:apk:device": "scripts/build_apk.sh --device $DEVICE_ID",
+    "build:desktop": "scripts/build_desktop.sh",
+    "build:desktop:mac": "scripts/build_desktop.sh --mac",
+    "build:desktop:win": "scripts/build_desktop.sh --win",
+    "build:desktop:all": "scripts/build_desktop.sh --all"
+  }
+}

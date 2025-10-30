@@ -2,6 +2,7 @@
   "name": "scripture-media-desktop-app",
   "version": "1.0.0",
   "description": "Desktop app for creating Scripture Media bundles",
+  "author": "Scripture Media Team",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -13,12 +14,12 @@
   "dependencies": {
     "@scripture-media/shared": "file:../shared",
     "crypto-js": "^4.2.0",
-    "electron": "^38.3.0",
     "uuid": "^9.0.0",
     "tar": "^6.2.0",
     "node-stream-zip": "^1.15.0"
   },
   "devDependencies": {
+    "electron": "^38.3.0",
     "electron-builder": "^24.0.0"
   },
   "build": {
