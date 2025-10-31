@@ -14,7 +14,7 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // Basic sanity check: title appears
-    expect(find.textContaining('Scripture Media'), findsOneWidget);
+    // Basic sanity check: localized title appears
+    expect(find.textContaining('Scripture Demo Player'), findsOneWidget);
   });
 }

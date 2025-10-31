@@ -236,6 +236,17 @@ class L10n {
       'status_play_limit_reached': 'Play limit reached for this media.',
       'status_play_limit_reached_with_reset':
           'Play limit reached. Resets in {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Playlist expired on {date}. Permanently locked.',
+      'status_playlist_max_items_lock':
+          'Maximum unique items ({max}) from playlist already played. Permanently locked.',
+      'status_must_wait_between_items':
+          'Must wait {duration} between playing different items.',
+      'status_playlist_session_limit':
+          'Session limit reached: {max} items per session. Resets in {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Session limit reached: {max} items per session.',
       // UI labels
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'No play limit',
@@ -249,6 +260,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Lifetime limit reached',
       'ui_total_suffix': ' total',
       'ui_plays_left': ' plays left',
+      'ui_session_usage': 'Session: {used} / {max}',
+      'ui_total_usage': 'Total: {used} / {max}',
       // Duration unit abbreviations
       'abbr_day': 'd',
       'abbr_hour': 'h',
@@ -260,6 +273,8 @@ class L10n {
       'add_custom_translations': 'Add custom JSON',
       'remove_custom_translations': 'Remove custom translations',
       'choose_json_file': 'Choose JSON file',
+      'ui_demo_warning':
+          'Demo content — not for distribution. This Scripture audio/video is an unfinished draft in the local language. We are still reviewing it. Please help us test and correct these recordings so we can share the final version with everyone.',
     },
     'es': {
       'app_title': 'Reproductor de demostración de Escrituras',
@@ -309,6 +324,17 @@ class L10n {
           'Se alcanzó el límite de reproducciones para este medio.',
       'status_play_limit_reached_with_reset':
           'Se alcanzó el límite de reproducciones. Se restablece en {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'La lista de reproducción expiró el {date}. Bloqueado permanentemente.',
+      'status_playlist_max_items_lock':
+          'Ya se reprodujeron los elementos únicos máximos ({max}) de la lista. Bloqueado permanentemente.',
+      'status_must_wait_between_items':
+          'Debes esperar {duration} entre reproducir diferentes elementos.',
+      'status_playlist_session_limit':
+          'Límite de sesión alcanzado: {max} elementos por sesión. Se restablece en {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Límite de sesión alcanzado: {max} elementos por sesión.',
       // Etiquetas UI
       'ui_media_label': 'Medio: {name}',
       'ui_no_play_limit': 'Sin límite de reproducciones',
@@ -322,6 +348,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Se alcanzó el límite de por vida',
       'ui_total_suffix': ' total',
       'ui_plays_left': ' reproducciones restantes',
+      'ui_session_usage': 'Sesión: {used} / {max}',
+      'ui_total_usage': 'Total: {used} / {max}',
       // Abreviaturas de duración
       'abbr_day': 'd',
       'abbr_hour': 'h',
@@ -333,6 +361,8 @@ class L10n {
       'add_custom_translations': 'Agregar JSON personalizado',
       'remove_custom_translations': 'Quitar traducciones personalizadas',
       'choose_json_file': 'Elegir archivo JSON',
+      'ui_demo_warning':
+          'Contenido de demostración — no para distribución. Este audio/video de las Escrituras es un borrador sin terminar en el idioma local. Aún lo estamos revisando. Por favor ayúdanos a probar y corregir estas grabaciones para poder compartir la versión final con todos.',
     },
     'fr': {
       'app_title': 'Lecteur de démo des Écritures',
@@ -376,6 +406,17 @@ class L10n {
       'status_play_limit_reached': 'Limite de lectures atteinte pour ce média.',
       'status_play_limit_reached_with_reset':
           'Limite de lectures atteinte. Réinitialisation dans {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'La liste de lecture a expiré le {date}. Verrouillé définitivement.',
+      'status_playlist_max_items_lock':
+          'Nombre maximum d\'éléments uniques ({max}) de la liste déjà joués. Verrouillé définitivement.',
+      'status_must_wait_between_items':
+          'Vous devez attendre {duration} entre la lecture de différents éléments.',
+      'status_playlist_session_limit':
+          'Limite de session atteinte : {max} éléments par session. Réinitialisation dans {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Limite de session atteinte : {max} éléments par session.',
       'ui_media_label': 'Média : {name}',
       'ui_no_play_limit': 'Aucune limite de lectures',
       'ui_resets_in': ' · se réinitialise dans {duration}',
@@ -388,6 +429,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Limite à vie atteinte',
       'ui_total_suffix': ' au total',
       'ui_plays_left': ' lectures restantes',
+      'ui_session_usage': 'Session : {used} / {max}',
+      'ui_total_usage': 'Total : {used} / {max}',
       'abbr_day': 'j',
       'abbr_hour': 'h',
       'abbr_minute': 'min',
@@ -398,6 +441,8 @@ class L10n {
       'add_custom_translations': 'Ajouter un JSON personnalisé',
       'remove_custom_translations': 'Supprimer les traductions personnalisées',
       'choose_json_file': 'Choisir un fichier JSON',
+      'ui_demo_warning':
+          'Contenu de démonstration — ne pas distribuer. Cet audio/vidéo des Écritures est un brouillon non finalisé dans la langue locale. Nous sommes encore en relecture. Aidez‑nous à tester et corriger ces enregistrements afin de partager la version finale avec tous.',
     },
     'de': {
       'app_title': 'Schrift Demo-Player',
@@ -443,6 +488,17 @@ class L10n {
           'Wiedergabelimit für dieses Medium erreicht.',
       'status_play_limit_reached_with_reset':
           'Wiedergabelimit erreicht. Setzt sich zurück in {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Wiedergabeliste ist am {date} abgelaufen. Dauerhaft gesperrt.',
+      'status_playlist_max_items_lock':
+          'Maximale eindeutige Elemente ({max}) der Wiedergabeliste bereits abgespielt. Dauerhaft gesperrt.',
+      'status_must_wait_between_items':
+          'Zwischen dem Abspielen verschiedener Elemente müssen {duration} vergehen.',
+      'status_playlist_session_limit':
+          'Sitzungslimit erreicht: {max} Elemente pro Sitzung. Setzt sich zurück in {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Sitzungslimit erreicht: {max} Elemente pro Sitzung.',
       'ui_media_label': 'Medium: {name}',
       'ui_no_play_limit': 'Kein Wiedergabelimit',
       'ui_resets_in': ' · setzt sich zurück in {duration}',
@@ -455,6 +511,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Lebenszeitlimit erreicht',
       'ui_total_suffix': ' gesamt',
       'ui_plays_left': ' Wiedergaben übrig',
+      'ui_session_usage': 'Sitzung: {used} / {max}',
+      'ui_total_usage': 'Gesamt: {used} / {max}',
       'abbr_day': 'T',
       'abbr_hour': 'h',
       'abbr_minute': 'm',
@@ -466,6 +524,8 @@ class L10n {
       'remove_custom_translations':
           'Benutzerdefinierte Übersetzungen entfernen',
       'choose_json_file': 'JSON-Datei auswählen',
+      'ui_demo_warning':
+          'Demo-Inhalt — nicht zur Verbreitung. Dieses Schrift‑Audio/Video ist ein unfertiger Entwurf in der lokalen Sprache. Wir prüfen es noch. Bitte hilf uns, diese Aufnahmen zu testen und zu korrigieren, damit wir die endgültige Fassung mit allen teilen können.',
     },
     'nl': {
       'app_title': 'Schrift Demo-speler',
@@ -507,6 +567,17 @@ class L10n {
       'status_play_limit_reached': 'Afspeellimiet voor dit medium bereikt.',
       'status_play_limit_reached_with_reset':
           'Afspeellimiet bereikt. Herstelt over {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Afspeellijst is verlopen op {date}. Permanent vergrendeld.',
+      'status_playlist_max_items_lock':
+          'Maximum unieke items ({max}) van afspeellijst al afgespeeld. Permanent vergrendeld.',
+      'status_must_wait_between_items':
+          'Wacht {duration} tussen het afspelen van verschillende items.',
+      'status_playlist_session_limit':
+          'Sessielimiet bereikt: {max} items per sessie. Herstelt over {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Sessielimiet bereikt: {max} items per sessie.',
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Geen afspeellimiet',
       'ui_resets_in': ' · herstelt over {duration}',
@@ -519,6 +590,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Levenslimiet bereikt',
       'ui_total_suffix': ' totaal',
       'ui_plays_left': ' weergaven over',
+      'ui_session_usage': 'Sessie: {used} / {max}',
+      'ui_total_usage': 'Totaal: {used} / {max}',
       'abbr_day': 'd',
       'abbr_hour': 'u',
       'abbr_minute': 'm',
@@ -529,6 +602,8 @@ class L10n {
       'add_custom_translations': 'Aangepaste JSON toevoegen',
       'remove_custom_translations': 'Aangepaste vertalingen verwijderen',
       'choose_json_file': 'JSON-bestand kiezen',
+      'ui_demo_warning':
+          'Demo-inhoud — niet voor verspreiding. Deze Schrift‑audio/video is een onvolledige conceptversie in de lokale taal. We beoordelen dit nog. Help ons testen en corrigeren zodat we de definitieve versie met iedereen kunnen delen.',
     },
     'af': {
       'app_title': 'Skrif Demo Speler',
@@ -573,6 +648,17 @@ class L10n {
       'status_play_limit_reached': 'Speelbeperking vir hierdie media bereik.',
       'status_play_limit_reached_with_reset':
           'Speelbeperking bereik. Stel terug oor {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Speellys het op {date} verval. Permanent gesluit.',
+      'status_playlist_max_items_lock':
+          'Maksimum unieke items ({max}) van speellys reeds gespeel. Permanent gesluit.',
+      'status_must_wait_between_items':
+          'Moet {duration} wag tussen verskillende items te speel.',
+      'status_playlist_session_limit':
+          'Sessiebeperking bereik: {max} items per sessie. Stel terug oor {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Sessiebeperking bereik: {max} items per sessie.',
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Geen speelbeperking',
       'ui_resets_in': ' · stel terug oor {duration}',
@@ -585,6 +671,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Lewenslimiet bereik',
       'ui_total_suffix': ' totaal',
       'ui_plays_left': ' spele oor',
+      'ui_session_usage': 'Sessie: {used} / {max}',
+      'ui_total_usage': 'Totaal: {used} / {max}',
       'abbr_day': 'd',
       'abbr_hour': 'u',
       'abbr_minute': 'm',
@@ -595,6 +683,8 @@ class L10n {
       'add_custom_translations': 'Voeg pasgemaakte JSON by',
       'remove_custom_translations': 'Verwyder pasgemaakte vertalings',
       'choose_json_file': 'Kies JSON-lêer',
+      'ui_demo_warning':
+          'Demo-inhoud — nie vir verspreiding nie. Hierdie Skrif‑klank/video is ’n onvoltooide konsep in die plaaslike taal. Ons hersien dit nog. Help ons asseblief om te toets en reg te stel sodat ons die finale weergawe met almal kan deel.',
     },
     'pt': {
       'app_title': 'Reprodutor de Demonstração das Escrituras',
@@ -641,6 +731,17 @@ class L10n {
           'Limite de reproduções atingido para esta mídia.',
       'status_play_limit_reached_with_reset':
           'Limite de reproduções atingido. Redefine em {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Lista de reprodução expirou em {date}. Bloqueado permanentemente.',
+      'status_playlist_max_items_lock':
+          'Número máximo de itens únicos ({max}) da lista já reproduzidos. Bloqueado permanentemente.',
+      'status_must_wait_between_items':
+          'Aguarde {duration} entre reproduzir diferentes itens.',
+      'status_playlist_session_limit':
+          'Limite de sessão atingido: {max} itens por sessão. Redefine em {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Limite de sessão atingido: {max} itens por sessão.',
       'ui_media_label': 'Mídia: {name}',
       'ui_no_play_limit': 'Sem limite de reproduções',
       'ui_resets_in': ' · redefine em {duration}',
@@ -653,6 +754,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Limite vitalício atingido',
       'ui_total_suffix': ' no total',
       'ui_plays_left': ' reproduções restantes',
+      'ui_session_usage': 'Sessão: {used} / {max}',
+      'ui_total_usage': 'Total: {used} / {max}',
       'abbr_day': 'd',
       'abbr_hour': 'h',
       'abbr_minute': 'min',
@@ -663,6 +766,8 @@ class L10n {
       'add_custom_translations': 'Adicionar JSON personalizado',
       'remove_custom_translations': 'Remover traduções personalizadas',
       'choose_json_file': 'Escolher arquivo JSON',
+      'ui_demo_warning':
+          'Conteúdo de demonstração — não para distribuição. Este áudio/vídeo das Escrituras é um rascunho inacabado no idioma local. Ainda estamos revisando. Ajude-nos a testar e corrigir estas gravações para que possamos compartilhar a versão final com todos.',
     },
     'id': {
       'app_title': 'Pemutar Demo Kitab Suci',
@@ -710,6 +815,17 @@ class L10n {
       'status_play_limit_reached': 'Batas pemutaran untuk media ini tercapai.',
       'status_play_limit_reached_with_reset':
           'Batas pemutaran tercapai. Akan disetel ulang dalam {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Daftar putar kedaluwarsa pada {date}. Terkunci permanen.',
+      'status_playlist_max_items_lock':
+          'Item unik maksimum ({max}) dari daftar putar sudah diputar. Terkunci permanen.',
+      'status_must_wait_between_items':
+          'Harus menunggu {duration} antara memutar item yang berbeda.',
+      'status_playlist_session_limit':
+          'Batas sesi tercapai: {max} item per sesi. Akan disetel ulang dalam {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Batas sesi tercapai: {max} item per sesi.',
       // UI labels
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Tidak ada batas pemutaran',
@@ -723,6 +839,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Batas seumur hidup tercapai',
       'ui_total_suffix': ' total',
       'ui_plays_left': ' sisa putar',
+      'ui_session_usage': 'Sesi: {used} / {max}',
+      'ui_total_usage': 'Total: {used} / {max}',
       // Duration unit abbreviations (compact)
       'abbr_day': 'h',
       'abbr_hour': 'j',
@@ -734,6 +852,8 @@ class L10n {
       'add_custom_translations': 'Tambahkan JSON kustom',
       'remove_custom_translations': 'Hapus terjemahan kustom',
       'choose_json_file': 'Pilih file JSON',
+      'ui_demo_warning':
+          'Konten demo — tidak untuk distribusi. Audio/video Kitab Suci ini masih draf dalam bahasa setempat. Kami masih meninjau. Mohon bantu kami menguji dan memperbaiki rekaman ini agar versi finalnya bisa dibagikan kepada semua orang.',
     },
     'ru': {
       'app_title': 'Демонстрационный плеер Писания',
@@ -779,6 +899,17 @@ class L10n {
           'Достигнут лимит воспроизведений для этого медиа.',
       'status_play_limit_reached_with_reset':
           'Лимит воспроизведений достигнут. Сброс через {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Плейлист истек {date}. Навсегда заблокирован.',
+      'status_playlist_max_items_lock':
+          'Достигнут максимум уникальных элементов ({max}) из плейлиста. Навсегда заблокирован.',
+      'status_must_wait_between_items':
+          'Нужно подождать {duration} между воспроизведением разных элементов.',
+      'status_playlist_session_limit':
+          'Достигнут лимит сессии: {max} элементов за сессию. Сброс через {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Достигнут лимит сессии: {max} элементов за сессию.',
       'ui_media_label': 'Медиа: {name}',
       'ui_no_play_limit': 'Без лимита воспроизведений',
       'ui_resets_in': ' · сброс через {duration}',
@@ -791,6 +922,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Достигнут пожизненный лимит',
       'ui_total_suffix': ' всего',
       'ui_plays_left': ' воспроизведений осталось',
+      'ui_session_usage': 'Сессия: {used} / {max}',
+      'ui_total_usage': 'Итого: {used} / {max}',
       'abbr_day': 'д',
       'abbr_hour': 'ч',
       'abbr_minute': 'м',
@@ -801,6 +934,8 @@ class L10n {
       'add_custom_translations': 'Добавить пользовательский JSON',
       'remove_custom_translations': 'Удалить пользовательские переводы',
       'choose_json_file': 'Выбрать файл JSON',
+      'ui_demo_warning':
+          'Демонстрационный материал — не для распространения. Это аудио/видео Писания — черновик на местном языке. Мы всё ещё его проверяем. Пожалуйста, помогите нам тестировать и исправлять записи, чтобы потом поделиться финальной версией со всеми.',
     },
     'hi': {
       'app_title': 'शास्त्र डेमो प्लेयर',
@@ -844,6 +979,17 @@ class L10n {
       'status_play_limit_reached': 'इस मीडिया के लिए प्ले सीमा पूरी हो गई है।',
       'status_play_limit_reached_with_reset':
           'प्ले सीमा पूरी हुई। {duration} में रीसेट होगा',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'प्लेलिस्ट {date} को समाप्त हुई। स्थायी रूप से लॉक।',
+      'status_playlist_max_items_lock':
+          'प्लेलिस्ट से अधिकतम अनूठे आइटम ({max}) पहले ही चलाए गए। स्थायी रूप से लॉक।',
+      'status_must_wait_between_items':
+          'विभिन्न आइटम चलाने के बीच {duration} प्रतीक्षा करें।',
+      'status_playlist_session_limit':
+          'सत्र सीमा पूरी हुई: प्रति सत्र {max} आइटम। {duration} में रीसेट होगा',
+      'status_playlist_session_limit_no_reset':
+          'सत्र सीमा पूरी हुई: प्रति सत्र {max} आइटम।',
       'ui_media_label': 'मीडिया: {name}',
       'ui_no_play_limit': 'कोई प्ले सीमा नहीं',
       'ui_resets_in': ' · {duration} में रीसेट होता है',
@@ -856,6 +1002,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'आजीवन सीमा पूरी हुई',
       'ui_total_suffix': ' कुल',
       'ui_plays_left': ' प्ले शेष',
+      'ui_session_usage': 'सत्र: {used} / {max}',
+      'ui_total_usage': 'कुल: {used} / {max}',
       'abbr_day': 'दिन',
       'abbr_hour': 'घं',
       'abbr_minute': 'मि',
@@ -866,6 +1014,8 @@ class L10n {
       'add_custom_translations': 'कस्टम JSON जोड़ें',
       'remove_custom_translations': 'कस्टम अनुवाद हटाएँ',
       'choose_json_file': 'JSON फ़ाइल चुनें',
+      'ui_demo_warning':
+          'डेमो सामग्री — वितरण के लिए नहीं। यह शास्त्र का ऑडियो/वीडियो स्थानीय भाषा में अधूरा मसौदा है। हम अभी इसकी समीक्षा कर रहे हैं। कृपया इन रिकॉर्डिंग्स का परीक्षण और संशोधन करने में हमारी मदद करें, ताकि अंतिम संस्करण हम सभी के साथ बाँट सकें।',
     },
     'ar': {
       'app_title': 'مشغل عرض الكتاب المقدس',
@@ -906,6 +1056,17 @@ class L10n {
       'status_play_limit_reached': 'تم بلوغ حد التشغيل لهذه الوسائط.',
       'status_play_limit_reached_with_reset':
           'تم بلوغ حد التشغيل. سيتم إعادة التعيين خلال {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'انتهت صلاحية قائمة التشغيل في {date}. مقفلة نهائيًا.',
+      'status_playlist_max_items_lock':
+          'تم بلوغ الحد الأقصى للعناصر الفريدة ({max}) من قائمة التشغيل. مقفلة نهائيًا.',
+      'status_must_wait_between_items':
+          'يجب الانتظار {duration} بين تشغيل عناصر مختلفة.',
+      'status_playlist_session_limit':
+          'تم بلوغ حد الجلسة: {max} عناصر لكل جلسة. سيتم إعادة التعيين خلال {duration}',
+      'status_playlist_session_limit_no_reset':
+          'تم بلوغ حد الجلسة: {max} عناصر لكل جلسة.',
       'ui_media_label': 'الوسائط: {name}',
       'ui_no_play_limit': 'لا يوجد حد للتشغيل',
       'ui_resets_in': ' · يعاد التعيين خلال {duration}',
@@ -918,6 +1079,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'تم بلوغ الحد مدى الحياة',
       'ui_total_suffix': ' الإجمالي',
       'ui_plays_left': ' مرات تشغيل متبقية',
+      'ui_session_usage': 'الجلسة: {used} / {max}',
+      'ui_total_usage': 'الإجمالي: {used} / {max}',
       'abbr_day': 'ي',
       'abbr_hour': 'س',
       'abbr_minute': 'د',
@@ -928,6 +1091,8 @@ class L10n {
       'add_custom_translations': 'إضافة JSON مخصص',
       'remove_custom_translations': 'إزالة الترجمات المخصصة',
       'choose_json_file': 'اختر ملف JSON',
+      'ui_demo_warning':
+          'محتوى تجريبي — غير مخصّص للتوزيع. هذا صوت/فيديو للكتاب المقدّس هو مسودة غير مكتملة باللغة المحلية. ما زلنا نراجعه. الرجاء مساعدتنا في اختبار هذه التسجيلات وتصحيحها لكي نشارك النسخة النهائية مع الجميع.',
     },
     'zh': {
       'app_title': '经文演示播放器',
@@ -962,6 +1127,13 @@ class L10n {
       'status_must_wait': '播放之间需等待 {duration}。',
       'status_play_limit_reached': '已达到此媒体的播放限制。',
       'status_play_limit_reached_with_reset': '已达到播放限制。将在 {duration} 后重置',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock': '播放列表已于 {date} 过期。永久锁定。',
+      'status_playlist_max_items_lock': '已播放播放列表中的最大唯一项目数（{max}）。永久锁定。',
+      'status_must_wait_between_items': '播放不同项目之间需等待 {duration}。',
+      'status_playlist_session_limit':
+          '已达到会话限制：每个会话 {max} 个项目。将在 {duration} 后重置',
+      'status_playlist_session_limit_no_reset': '已达到会话限制：每个会话 {max} 个项目。',
       'ui_media_label': '媒体：{name}',
       'ui_no_play_limit': '无限制播放',
       'ui_resets_in': ' · 将在 {duration} 后重置',
@@ -974,6 +1146,8 @@ class L10n {
       'lock_reason_lifetime_limit': '达到终身限制',
       'ui_total_suffix': ' 总计',
       'ui_plays_left': ' 次播放剩余',
+      'ui_session_usage': '会话：{used} / {max}',
+      'ui_total_usage': '总计：{used} / {max}',
       'abbr_day': '天',
       'abbr_hour': '小时',
       'abbr_minute': '分',
@@ -984,6 +1158,8 @@ class L10n {
       'add_custom_translations': '添加自定义 JSON',
       'remove_custom_translations': '移除自定义翻译',
       'choose_json_file': '选择 JSON 文件',
+      'ui_demo_warning':
+          '演示内容——请勿传播。此本地语言的经文音频/视频尚未定稿，我们仍在审校。请帮助我们测试并修订这些录音，以便将最终版本与大家分享。',
     },
     'tpi': {
       'app_title': 'Scripture Demo Pleya',
@@ -1024,6 +1200,17 @@ class L10n {
           'Mak bilong pilai i kamap pinis long dispela media.',
       'status_play_limit_reached_with_reset':
           'Mak bilong pilai i kamap pinis. Bai stret gen long {duration}',
+      // Playlist-level limit messages
+      'status_playlist_expired_lock':
+          'Plelist i pinis taim long {date}. I pas strong.',
+      'status_playlist_max_items_lock':
+          'Maksimum samting ({max}) long plelist i pilai pinis. I pas strong.',
+      'status_must_wait_between_items':
+          'Mas wet {duration} namel long pilai narapela samting.',
+      'status_playlist_session_limit':
+          'Mak bilong sesen i kamap: {max} samting long wan sesen. Bai stret gen long {duration}',
+      'status_playlist_session_limit_no_reset':
+          'Mak bilong sesen i kamap: {max} samting long wan sesen.',
       'ui_media_label': 'Media: {name}',
       'ui_no_play_limit': 'Nogat mak bilong pilai',
       'ui_resets_in': ' · bai stret gen long {duration}',
@@ -1036,6 +1223,8 @@ class L10n {
       'lock_reason_lifetime_limit': 'Mak long olgeta taim i kamap',
       'ui_total_suffix': ' olgeta',
       'ui_plays_left': ' pilai i stap yet',
+      'ui_session_usage': 'Sesen: {used} / {max}',
+      'ui_total_usage': 'Olgeta: {used} / {max}',
       'abbr_day': 'dei',
       'abbr_hour': 'aua',
       'abbr_minute': 'min',
@@ -1046,6 +1235,8 @@ class L10n {
       'add_custom_translations': 'Putim kastom JSON',
       'remove_custom_translations': 'Rausim kastom translesen',
       'choose_json_file': 'Makim JSON fail',
+      'ui_demo_warning':
+          'Demosain samting — no bilong givaut. Dispela Tok Baibel audio/vidio em i draf yet long tokples. Mipela yet wok long skelim. Plis helpim mipela long traim na stretim ol rekoding olsem bai mipela ken kisim pinis na salim wantaim olgeta.',
     },
   };
   // Interpolation with {placeholders}
@@ -1127,10 +1318,15 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _playChargeTimer;
   bool _sessionActive = false;
   bool _sessionCharged = false;
+  // Playlist reservation: counters reserved at play start and fulfilled on progress
+  bool _playlistCountersReserved = false;
+  bool _playlistReservationFulfilled = false;
   // Track last saved position (ms) to throttle persistence
   int _lastSavedPosMs = 0;
   // Stream subscriptions for receiving shared files
   late StreamSubscription<List<SharedMediaFile>> _intentDataStreamSubscription;
+  // UI ticker to refresh countdowns in list and headers
+  Timer? _uiTicker;
 
   @override
   void initState() {
@@ -1139,6 +1335,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadLastPlayed();
     _configureAudioSession();
     _initReceiveSharingIntent();
+    // Start a lightweight UI ticker so countdowns update live
+    _uiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _configureAudioSession() async {
@@ -1597,6 +1797,90 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       }
 
+      // === Playlist-level checks ===
+      await _ensurePlaylistSession();
+
+      // Check playlist expiration
+      final playlistExpirationStr = _playlistExpirationDate();
+      if (playlistExpirationStr != null) {
+        final playlistExpiration = DateTime.parse(playlistExpirationStr);
+        if (DateTime.now().isAfter(playlistExpiration)) {
+          setState(() {
+            _status = _t('status_playlist_expired_lock', {
+              'date': playlistExpiration.toLocal().toString(),
+            });
+          });
+          return;
+        }
+      }
+
+      // Check total unique items played
+      final maxTotalItems = _maxTotalItemsPlayed();
+      if (maxTotalItems != null) {
+        final totalItems = await _getTotalItemsPlayed();
+        if (totalItems.length >= maxTotalItems && !totalItems.contains(id)) {
+          setState(() {
+            _status = _t('status_playlist_max_items_lock', {
+              'max': '$maxTotalItems',
+            });
+          });
+          return;
+        }
+      }
+
+      // Check minimum interval between items
+      final minIntervalBetweenItems = _minIntervalBetweenItemsMs();
+      if (minIntervalBetweenItems != null && minIntervalBetweenItems > 0) {
+        final lastItemPlayTime = await _getLastItemPlayTime();
+        if (lastItemPlayTime != null) {
+          final timeSinceLastItem = now - lastItemPlayTime;
+          if (timeSinceLastItem < minIntervalBetweenItems) {
+            final remaining = Duration(
+              milliseconds: minIntervalBetweenItems - timeSinceLastItem,
+            );
+            setState(() {
+              _status = _t('status_must_wait_between_items', {
+                'duration': _fmtDur(remaining),
+              });
+            });
+            return;
+          }
+        }
+      }
+
+      // Check max items per session
+      final maxItems = _maxItemsPerSession();
+      if (maxItems != null) {
+        final sessionItems = await _getPlayedItemsInSession();
+        if (sessionItems.length >= maxItems && !sessionItems.contains(id)) {
+          final sessionResetMs = _sessionResetIntervalMs();
+          if (sessionResetMs != null) {
+            final sessionStartKey = 'playlistSession:$bundleId:start';
+            final sessionStart = prefs.getInt(sessionStartKey);
+            if (sessionStart != null) {
+              final elapsed = now - sessionStart;
+              final remaining = Duration(
+                milliseconds: sessionResetMs - elapsed,
+              );
+              setState(() {
+                _status = _t('status_playlist_session_limit', {
+                  'max': '$maxItems',
+                  'duration': _fmtDur(remaining),
+                });
+              });
+              return;
+            }
+          }
+          setState(() {
+            _status = _t('status_playlist_session_limit_no_reset', {
+              'max': '$maxItems',
+            });
+          });
+          return;
+        }
+      }
+
+      // === Per-file checks ===
       // Check total plays limit
       final maxPlaysTotal = _maxPlaysTotalFor(id);
       if (maxPlaysTotal != null) {
@@ -1666,6 +1950,9 @@ class _MyHomePageState extends State<MyHomePage> {
       await _incrementPlaysUsed(_currentMediaId!);
       _sessionCharged = true;
       await _clearSavedPosition(_currentMediaId!);
+    } else {
+      // Release reserved playlist counters if no progress
+      await _releasePlaylistCountersIfUnfulfilled();
     }
     await _stopPlayback();
     _sessionActive = false;
@@ -1780,6 +2067,215 @@ class _MyHomePageState extends State<MyHomePage> {
     return _bundleConfig?['expirationDate'] as String?;
   }
 
+  // ===== Playlist-level limit helpers =====
+  Map<String, dynamic>? _getPlaylistLimits() {
+    final cfg = _bundleConfig;
+    if (cfg == null) return null;
+    final limits = cfg['playlistLimits'] as Map?;
+    return limits?.cast<String, dynamic>();
+  }
+
+  int? _maxItemsPerSession() {
+    final limits = _getPlaylistLimits();
+    return (limits?['maxItemsPerSession'] as num?)?.toInt();
+  }
+
+  int? _sessionResetIntervalMs() {
+    final limits = _getPlaylistLimits();
+    return (limits?['sessionResetIntervalMs'] as num?)?.toInt();
+  }
+
+  int? _minIntervalBetweenItemsMs() {
+    final limits = _getPlaylistLimits();
+    return (limits?['minIntervalBetweenItemsMs'] as num?)?.toInt();
+  }
+
+  int? _maxTotalItemsPlayed() {
+    final limits = _getPlaylistLimits();
+    return (limits?['maxTotalItemsPlayed'] as num?)?.toInt();
+  }
+
+  String? _playlistExpirationDate() {
+    final limits = _getPlaylistLimits();
+    return limits?['expirationDate'] as String?;
+  }
+
+  Future<Set<String>> _getPlayedItemsInSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:items';
+    final items = prefs.getStringList(key) ?? [];
+    return items.toSet();
+  }
+
+  Future<void> _addItemToSession(String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:items';
+    final items = (prefs.getStringList(key) ?? []).toSet();
+    items.add(fileName);
+    await prefs.setStringList(key, items.toList());
+
+    // Update session start time if not set
+    final sessionStartKey = 'playlistSession:$bundleId:start';
+    if (!prefs.containsKey(sessionStartKey)) {
+      await prefs.setInt(
+        sessionStartKey,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    }
+  }
+
+  Future<void> _ensurePlaylistSession() async {
+    final resetIntervalMs = _sessionResetIntervalMs();
+    if (resetIntervalMs == null) return; // No session reset configured
+
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final sessionStartKey = 'playlistSession:$bundleId:start';
+    final sessionItemsKey = 'playlistSession:$bundleId:items';
+    final sessionCountKey = 'playlistSession:$bundleId:count';
+
+    final sessionStart = prefs.getInt(sessionStartKey);
+    if (sessionStart == null) return; // No session started yet
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final elapsed = now - sessionStart;
+
+    if (elapsed >= resetIntervalMs) {
+      // Session expired, reset
+      await prefs.remove(sessionStartKey);
+      await prefs.remove(sessionItemsKey);
+      await prefs.remove(sessionCountKey);
+    }
+  }
+
+  Future<Set<String>> _getTotalItemsPlayed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:items';
+    final items = prefs.getStringList(key) ?? [];
+    return items.toSet();
+  }
+
+  Future<void> _addItemToTotalPlayed(String fileName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:items';
+    final items = (prefs.getStringList(key) ?? []).toSet();
+    items.add(fileName);
+    await prefs.setStringList(key, items.toList());
+  }
+
+  // Playlist-level counters (count every play, including repeats)
+  Future<int> _getSessionPlayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:count';
+    return prefs.getInt(key) ?? 0;
+  }
+
+  Future<void> _incSessionPlayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:count';
+    final cur = prefs.getInt(key) ?? 0;
+    await prefs.setInt(key, cur + 1);
+  }
+
+  Future<void> _decSessionPlayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistSession:$bundleId:count';
+    final cur = prefs.getInt(key) ?? 0;
+    if (cur > 0) {
+      await prefs.setInt(key, cur - 1);
+    }
+  }
+
+  Future<int> _getTotalPlayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:count';
+    return prefs.getInt(key) ?? 0;
+  }
+
+  Future<void> _incTotalPlayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:count';
+    final cur = prefs.getInt(key) ?? 0;
+    await prefs.setInt(key, cur + 1);
+  }
+
+  Future<void> _decTotalPlayCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistTotal:$bundleId:count';
+    final cur = prefs.getInt(key) ?? 0;
+    if (cur > 0) {
+      await prefs.setInt(key, cur - 1);
+    }
+  }
+
+  // Reserve/release playlist counters around play sessions
+  Future<void> _reservePlaylistCounters() async {
+    if (_playlistCountersReserved) return;
+    await _incSessionPlayCount();
+    await _incTotalPlayCount();
+    _playlistCountersReserved = true;
+    _playlistReservationFulfilled = false;
+  }
+
+  Future<void> _releasePlaylistCountersIfUnfulfilled() async {
+    if (_playlistCountersReserved && !_playlistReservationFulfilled) {
+      await _decSessionPlayCount();
+      await _decTotalPlayCount();
+    }
+    _playlistCountersReserved = false;
+    _playlistReservationFulfilled = false;
+  }
+
+  Future<int?> _getLastItemPlayTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistLastItemPlay:$bundleId';
+    return prefs.getInt(key);
+  }
+
+  Future<void> _updateLastItemPlayTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final key = 'playlistLastItemPlay:$bundleId';
+    await prefs.setInt(key, DateTime.now().millisecondsSinceEpoch);
+  }
+
   Future<void> _incrementPlaysUsed(String fileName) async {
     final prefs = await SharedPreferences.getInstance();
     final bundleId = _bundleConfig != null
@@ -1800,6 +2296,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Update last play time
     await prefs.setInt(lastPlayKey, DateTime.now().millisecondsSinceEpoch);
+
+    // Track playlist-level plays (unique sets and last-item time)
+    await _addItemToSession(fileName);
+    await _addItemToTotalPlayed(fileName);
+    await _updateLastItemPlayTime();
   }
 
   Future<bool> _canPlayCurrent() async {
@@ -1830,6 +2331,50 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
+    // === Playlist-level checks ===
+    // Ensure session window
+    await _ensurePlaylistSession();
+
+    // Check playlist expiration
+    final playlistExpirationStr = _playlistExpirationDate();
+    if (playlistExpirationStr != null) {
+      final playlistExpiration = DateTime.parse(playlistExpirationStr);
+      if (DateTime.now().isAfter(playlistExpiration)) {
+        return false;
+      }
+    }
+
+    // Check total items played across lifetime (counting repeats)
+    final maxTotalItems = _maxTotalItemsPlayed();
+    if (maxTotalItems != null) {
+      final totalCount = await _getTotalPlayCount();
+      if (totalCount >= maxTotalItems) {
+        return false;
+      }
+    }
+
+    // Check minimum interval between playing different items
+    final minIntervalBetweenItems = _minIntervalBetweenItemsMs();
+    if (minIntervalBetweenItems != null && minIntervalBetweenItems > 0) {
+      final lastItemPlayTime = await _getLastItemPlayTime();
+      if (lastItemPlayTime != null) {
+        final timeSinceLastItem = now - lastItemPlayTime;
+        if (timeSinceLastItem < minIntervalBetweenItems) {
+          return false;
+        }
+      }
+    }
+
+    // Check max items per session (counting repeats)
+    final maxItems = _maxItemsPerSession();
+    if (maxItems != null) {
+      final sessionCount = await _getSessionPlayCount();
+      if (sessionCount >= maxItems) {
+        return false;
+      }
+    }
+
+    // === Per-file checks ===
     // Check total plays limit
     final maxPlaysTotal = _maxPlaysTotalFor(id);
     if (maxPlaysTotal != null) {
@@ -1895,6 +2440,39 @@ class _MyHomePageState extends State<MyHomePage> {
     return Duration(milliseconds: remainingMs);
   }
 
+  // Playlist-level remaining cooldown between items
+  Future<Duration?> _remainingBetweenItems() async {
+    final minIntervalBetweenItems = _minIntervalBetweenItemsMs();
+    if (minIntervalBetweenItems == null || minIntervalBetweenItems <= 0) {
+      return null;
+    }
+    final lastItemPlayTime = await _getLastItemPlayTime();
+    if (lastItemPlayTime == null) return null;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final elapsed = now - lastItemPlayTime;
+    final remain = minIntervalBetweenItems - elapsed;
+    if (remain <= 0) return Duration.zero;
+    return Duration(milliseconds: remain);
+  }
+
+  // Playlist-level remaining time until session reset
+  Future<Duration?> _remainingSessionReset() async {
+    final resetMs = _sessionResetIntervalMs();
+    if (resetMs == null || resetMs <= 0) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final bundleId = _bundleConfig != null
+        ? (_bundleConfig!['bundleId'] ?? 'unknown')
+        : 'unknown';
+    final sessionStartKey = 'playlistSession:$bundleId:start';
+    final start = prefs.getInt(sessionStartKey);
+    if (start == null) return null;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final end = start + resetMs;
+    final remain = end - now;
+    if (remain <= 0) return Duration.zero;
+    return Duration(milliseconds: remain);
+  }
+
   Future<_PlayInfo> _getPlayInfo(String fileName) async {
     final prefs = await SharedPreferences.getInstance();
     final bundleId = _bundleConfig != null
@@ -1946,6 +2524,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _sessionActive = true;
     _sessionCharged = false;
     _playChargeTimer?.cancel();
+    // Reserve playlist counters at play start
+    unawaited(_reservePlaylistCounters());
     // No auto-charge timer.
   }
 
@@ -1957,6 +2537,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if (hadProgress && !_sessionCharged && _currentMediaId != null) {
         await _incrementPlaysUsed(_currentMediaId!);
         await _clearSavedPosition(_currentMediaId!);
+      } else if (!hadProgress) {
+        await _releasePlaylistCountersIfUnfulfilled();
       }
     }
     _sessionActive = false;
@@ -2015,6 +2597,12 @@ class _MyHomePageState extends State<MyHomePage> {
       final name = _currentFileName;
       if (name == null) return;
       final posMs = value.position.inMilliseconds;
+      // Mark playlist reservation fulfilled on first forward progress
+      if (_playlistCountersReserved &&
+          !_playlistReservationFulfilled &&
+          posMs > 0) {
+        _playlistReservationFulfilled = true;
+      }
       // Persist position roughly every second of forward progress
       if (posMs - _lastSavedPosMs >= 1000) {
         _lastSavedPosMs = posMs;
@@ -2086,6 +2674,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _finalizePlaySession();
     _controller?.dispose();
     _intentDataStreamSubscription.cancel();
+    _uiTicker?.cancel();
     super.dispose();
   }
 
@@ -2135,6 +2724,34 @@ class _MyHomePageState extends State<MyHomePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade700),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.amber.shade800,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _t('ui_demo_warning'),
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             Center(child: Text(_status)),
             if (_bundleConfig != null) ...[
               const SizedBox(height: 4),
@@ -2148,6 +2765,76 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
             const SizedBox(height: 12),
+            // Playlist-level live indicators (cooldowns, session usage)
+            if (_bundleConfig != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Cooldown between items
+                    FutureBuilder<Duration?>(
+                      future: _remainingBetweenItems(),
+                      builder: (context, snap) {
+                        final rem = snap.data;
+                        if (rem == null || rem <= Duration.zero) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          _t('status_must_wait', {'duration': _fmtDur(rem)}),
+                        );
+                      },
+                    ),
+                    // Session usage and reset timer
+                    if (_maxItemsPerSession() != null) ...[
+                      const SizedBox(height: 2),
+                      FutureBuilder<int>(
+                        future: _getSessionPlayCount(),
+                        builder: (context, snap) {
+                          final used = snap.data ?? 0;
+                          final max = _maxItemsPerSession()!;
+                          return FutureBuilder<Duration?>(
+                            future: _remainingSessionReset(),
+                            builder: (context, s2) {
+                              final rem = s2.data;
+                              final resetStr =
+                                  (rem != null && rem > Duration.zero)
+                                  ? _t('ui_resets_in', {
+                                      'duration': _fmtDur(rem),
+                                    })
+                                  : '';
+                              final base = _t('ui_session_usage', {
+                                'used': '$used',
+                                'max': '$max',
+                              });
+                              return Text('$base$resetStr');
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                    // Lifetime total usage
+                    if (_maxTotalItemsPlayed() != null) ...[
+                      const SizedBox(height: 2),
+                      FutureBuilder<int>(
+                        future: _getTotalPlayCount(),
+                        builder: (context, snap) {
+                          final used = snap.data ?? 0;
+                          final max = _maxTotalItemsPlayed()!;
+                          return Text(
+                            _t('ui_total_usage', {
+                              'used': '$used',
+                              'max': '$max',
+                            }),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
 
             // Playback area (video preview for video; simple banner for audio)
             if (_controller != null && _controller!.value.isInitialized)

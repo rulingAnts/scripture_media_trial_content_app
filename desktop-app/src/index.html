@@ -348,6 +348,69 @@
       </div>
 
       <div class="section">
+        <div class="section-title">Playlist-Level Limits (Optional)</div>
+        <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+          These limits apply to the entire playlist, controlling overall usage across all files.
+        </p>
+        
+        <div class="form-group">
+          <label for="playlist-max-items-session">Max Items Per Session (Optional)</label>
+          <input type="number" id="playlist-max-items-session" value="" min="1" placeholder="Leave empty for no limit">
+          <small style="color: #666;">Maximum number of unique files that can be played within a session</small>
+        </div>
+
+        <div class="form-group">
+          <label>Session Reset Interval (Optional)</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div>
+              <input type="number" id="session-reset-days" value="0" min="0" placeholder="Days">
+              <small style="display: block; color: #666;">Days</small>
+            </div>
+            <div>
+              <input type="number" id="session-reset-hours" value="0" min="0" placeholder="Hours">
+              <small style="display: block; color: #666;">Hours</small>
+            </div>
+            <div>
+              <input type="number" id="session-reset-minutes" value="0" min="0" placeholder="Minutes">
+              <small style="display: block; color: #666;">Minutes</small>
+            </div>
+          </div>
+          <small style="color: #666;">How long until the session resets and users can play new items (leave at 0 for no reset)</small>
+        </div>
+
+        <div class="form-group">
+          <label>Minimum Interval Between Items (Optional)</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div>
+              <input type="number" id="playlist-interval-days" value="0" min="0" placeholder="Days">
+              <small style="display: block; color: #666;">Days</small>
+            </div>
+            <div>
+              <input type="number" id="playlist-interval-hours" value="0" min="0" placeholder="Hours">
+              <small style="display: block; color: #666;">Hours</small>
+            </div>
+            <div>
+              <input type="number" id="playlist-interval-minutes" value="0" min="0" placeholder="Minutes">
+              <small style="display: block; color: #666;">Minutes</small>
+            </div>
+          </div>
+          <small style="color: #666;">Required waiting time between playing different files (leave at 0 for no minimum)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="playlist-max-total-items">Maximum Total Items Played Ever (Optional)</label>
+          <input type="number" id="playlist-max-total-items" value="" min="1" placeholder="Leave empty for no limit">
+          <small style="color: #666;">Absolute lifetime limit on unique files - playlist becomes permanently locked after this many unique files are played</small>
+        </div>
+
+        <div class="form-group">
+          <label for="playlist-expiration-date">Playlist Expiration Date & Time (Optional)</label>
+          <input type="datetime-local" id="playlist-expiration-date">
+          <small style="color: #666;">Playlist becomes permanently locked after this date/time (can differ from bundle expiration)</small>
+        </div>
+      </div>
+
+      <div class="section">
         <div class="section-title">Media Files</div>
         
         <button class="button button-secondary" id="add-media-button">

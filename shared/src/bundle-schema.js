@@ -9,6 +9,7 @@
  * @param {Array<string>} options.allowedDeviceIds - List of allowed device IDs
  * @param {Array<Object>} options.mediaFiles - Media files in the bundle
  * @param {Object} options.playbackLimits - Playback limit configuration
+ * @param {Object} options.playlistLimits - Playlist-level playback limits
  * @param {string} options.expirationDate - Optional expiration date (ISO 8601)
  * @returns {Object} - Bundle configuration object
  */
@@ -18,6 +19,7 @@ function createBundleConfig(options) {
     allowedDeviceIds = [],
     mediaFiles = [],
     playbackLimits = {},
+    playlistLimits = {},
     bundleKey = null,
     integrity = null,
     expirationDate = null
@@ -28,6 +30,14 @@ function createBundleConfig(options) {
     resetIntervalMs: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
     minIntervalBetweenPlaysMs: null, // Optional: minimum time between plays
     maxPlaysTotal: null // Optional: absolute lifetime limit
+  };
+
+  const defaultPlaylistLimits = {
+    maxItemsPerSession: null, // Optional: max unique items from playlist that can be played in a session
+    sessionResetIntervalMs: null, // Optional: time window for session reset
+    minIntervalBetweenItemsMs: null, // Optional: minimum time between playing different items
+    maxTotalItemsPlayed: null, // Optional: lifetime limit on number of unique items played
+    expirationDate: null // Optional: playlist-level expiration (can differ from bundle expiration)
   };
 
   return {
@@ -47,6 +57,10 @@ function createBundleConfig(options) {
     })),
     playbackLimits: {
       default: playbackLimits.default || defaultLimits
+    },
+    playlistLimits: {
+      ...defaultPlaylistLimits,
+      ...playlistLimits
     },
     bundleKey,
     integrity
@@ -127,7 +141,8 @@ function verifyBundleIntegrity(config) {
     bundleId: config.bundleId,
     allowedDeviceIds: config.allowedDeviceIds,
     mediaFiles: config.mediaFiles,
-    playbackLimits: config.playbackLimits
+    playbackLimits: config.playbackLimits,
+    playlistLimits: config.playlistLimits
   })).digest('hex');
 
   return expectedHash === config.integrity;

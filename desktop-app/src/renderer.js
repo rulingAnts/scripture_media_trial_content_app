@@ -21,6 +21,17 @@ const createBundleButton = document.getElementById('create-bundle-button');
 const messageContainer = document.getElementById('message-container');
 const loadingDiv = document.getElementById('loading');
 
+// Playlist-level limit DOM elements
+const playlistMaxItemsSessionInput = document.getElementById('playlist-max-items-session');
+const sessionResetDaysInput = document.getElementById('session-reset-days');
+const sessionResetHoursInput = document.getElementById('session-reset-hours');
+const sessionResetMinutesInput = document.getElementById('session-reset-minutes');
+const playlistIntervalDaysInput = document.getElementById('playlist-interval-days');
+const playlistIntervalHoursInput = document.getElementById('playlist-interval-hours');
+const playlistIntervalMinutesInput = document.getElementById('playlist-interval-minutes');
+const playlistMaxTotalItemsInput = document.getElementById('playlist-max-total-items');
+const playlistExpirationDateInput = document.getElementById('playlist-expiration-date');
+
 // Event Listeners
 deviceIdsInput.addEventListener('input', updateDeviceIdsDisplay);
 addMediaButton.addEventListener('click', handleAddMedia);
@@ -46,6 +57,52 @@ function calculatePlaybackLimit() {
     resetIntervalMs: resetIntervalMs || 24 * 60 * 60 * 1000, // Default to 24 hours
     minIntervalBetweenPlaysMs: minIntervalMs || null,
     maxPlaysTotal: maxPlaysTotal
+  };
+}
+
+function calculatePlaylistLimits() {
+  const maxItemsSessionValue = playlistMaxItemsSessionInput.value.trim();
+  const maxItemsPerSession = maxItemsSessionValue ? parseInt(maxItemsSessionValue) : null;
+  
+  // Validate maxItemsPerSession
+  if (maxItemsPerSession !== null && (isNaN(maxItemsPerSession) || maxItemsPerSession < 1)) {
+    throw new Error('Max items per session must be at least 1');
+  }
+  
+  const sessionDays = Math.max(0, parseInt(sessionResetDaysInput.value) || 0);
+  const sessionHours = Math.max(0, parseInt(sessionResetHoursInput.value) || 0);
+  const sessionMinutes = Math.max(0, parseInt(sessionResetMinutesInput.value) || 0);
+  const sessionResetMs = (sessionDays * 24 * 60 * 60 * 1000) + (sessionHours * 60 * 60 * 1000) + (sessionMinutes * 60 * 1000);
+  
+  const playlistIntervalDays = Math.max(0, parseInt(playlistIntervalDaysInput.value) || 0);
+  const playlistIntervalHours = Math.max(0, parseInt(playlistIntervalHoursInput.value) || 0);
+  const playlistIntervalMinutes = Math.max(0, parseInt(playlistIntervalMinutesInput.value) || 0);
+  const minIntervalBetweenItemsMs = (playlistIntervalDays * 24 * 60 * 60 * 1000) + (playlistIntervalHours * 60 * 60 * 1000) + (playlistIntervalMinutes * 60 * 1000);
+  
+  const maxTotalItemsValue = playlistMaxTotalItemsInput.value.trim();
+  const maxTotalItemsPlayed = maxTotalItemsValue ? parseInt(maxTotalItemsValue) : null;
+  
+  // Validate maxTotalItemsPlayed
+  if (maxTotalItemsPlayed !== null && (isNaN(maxTotalItemsPlayed) || maxTotalItemsPlayed < 1)) {
+    throw new Error('Max total items played must be at least 1');
+  }
+  
+  const playlistExpirationValue = playlistExpirationDateInput.value;
+  let playlistExpiration = null;
+  if (playlistExpirationValue) {
+    const expirationDate = new Date(playlistExpirationValue);
+    if (isNaN(expirationDate.getTime())) {
+      throw new Error('Invalid playlist expiration date');
+    }
+    playlistExpiration = expirationDate.toISOString();
+  }
+  
+  return {
+    maxItemsPerSession: maxItemsPerSession,
+    sessionResetIntervalMs: sessionResetMs > 0 ? sessionResetMs : null,
+    minIntervalBetweenItemsMs: minIntervalBetweenItemsMs > 0 ? minIntervalBetweenItemsMs : null,
+    maxTotalItemsPlayed: maxTotalItemsPlayed,
+    expirationDate: playlistExpiration
   };
 }
 
@@ -210,6 +267,15 @@ async function handleCreateBundle() {
       }
     }
 
+    // Validate and calculate playlist limits
+    let playlistLimits;
+    try {
+      playlistLimits = calculatePlaylistLimits();
+    } catch (error) {
+      showError(error.message);
+      return;
+    }
+
     // Select output directory
     const outputDir = await ipcRenderer.invoke('select-output-directory');
     if (!outputDir) {
@@ -228,6 +294,7 @@ async function handleCreateBundle() {
       playbackLimits: {
         default: playbackLimit
       },
+      playlistLimits: playlistLimits,
       expirationDate,
       outputDir
     });
