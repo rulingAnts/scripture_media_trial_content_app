@@ -2,17 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+// import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter/services.dart'
+    show PlatformException, Clipboard, ClipboardData;
+import 'package:flutter/services.dart' as services;
 import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:video_player/video_player.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as enc;
+import 'package:pointycastle/export.dart' as pc;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:audio_session/audio_session.dart';
@@ -37,6 +40,139 @@ class _PlayInfo {
     this.isPermanentlyLocked,
     this.lockReason,
   );
+}
+
+// ===== Streaming AES-CBC (OpenSSL salted) decryptor for large files =====
+// Transforms an encrypted byte stream (base64-decoded, starting with 'Salted__'+8 salt)
+// into decrypted plaintext bytes (with PKCS7 padding removed) without loading whole content into memory.
+class _OpenSslAesCbcPkcs7StreamDecryptor
+    extends StreamTransformerBase<List<int>, List<int>> {
+  final String passphrase;
+  _OpenSslAesCbcPkcs7StreamDecryptor(this.passphrase);
+
+  static const int _blockSize = 16;
+  final List<int> _header = [];
+  final List<int> _buf = [];
+  bool _inited = false;
+  late pc.CBCBlockCipher _cbc;
+
+  @override
+  Stream<List<int>> bind(Stream<List<int>> stream) async* {
+    // Use a controller to sequentially process chunks
+    final controller = StreamController<List<int>>();
+
+    void emitDecryptedBlocks() {
+      // While we have at least two blocks buffered, decrypt one and emit.
+      while (_buf.length >= _blockSize * 2) {
+        final block = Uint8List.fromList(_buf.sublist(0, _blockSize));
+        final out = Uint8List(_blockSize);
+        _cbc.processBlock(block, 0, out, 0);
+        controller.add(out);
+        _buf.removeRange(0, _blockSize);
+      }
+    }
+
+    stream.listen(
+      (chunk) {
+        try {
+          if (!_inited) {
+            _header.addAll(chunk);
+            if (_header.length >= 16) {
+              final magic = String.fromCharCodes(_header.sublist(0, 8));
+              if (magic != 'Salted__') {
+                throw StateError('Invalid OpenSSL salted header');
+              }
+              final salt = Uint8List.fromList(_header.sublist(8, 16));
+              final passBytes = Uint8List.fromList(utf8.encode(passphrase));
+              final params = _evpBytesToKeyStatic(passBytes, salt, 32, 16);
+              final keyParam = pc.KeyParameter(params['key']!);
+              _cbc = pc.CBCBlockCipher(pc.AESEngine())
+                ..reset()
+                ..init(false, pc.ParametersWithIV(keyParam, params['iv']!));
+              _inited = true;
+              // Any leftover beyond header goes to buffer
+              final remain = _header.length - 16;
+              if (remain > 0) {
+                _buf.addAll(_header.sublist(16));
+              }
+            }
+          } else {
+            _buf.addAll(chunk);
+          }
+          if (_inited) emitDecryptedBlocks();
+        } catch (e) {
+          controller.addError(e);
+        }
+      },
+      onError: controller.addError,
+      onDone: () {
+        try {
+          if (!_inited) {
+            throw StateError('Missing OpenSSL salted header');
+          }
+          if (_buf.isEmpty || _buf.length % _blockSize != 0) {
+            throw StateError('Ciphertext not aligned to block size');
+          }
+          // Decrypt remaining blocks
+          final out = BytesBuilder(copy: false);
+          while (_buf.length >= _blockSize) {
+            final block = Uint8List.fromList(_buf.sublist(0, _blockSize));
+            final dec = Uint8List(_blockSize);
+            _cbc.processBlock(block, 0, dec, 0);
+            out.add(dec);
+            _buf.removeRange(0, _blockSize);
+          }
+          final decAll = out.takeBytes();
+          if (decAll.isEmpty) {
+            controller.close();
+            return;
+          }
+          // Remove PKCS7 padding
+          final pad = decAll.last;
+          if (pad <= 0 || pad > _blockSize) {
+            throw StateError('Invalid PKCS7 padding');
+          }
+          // Verify padding bytes
+          for (int i = 0; i < pad; i++) {
+            if (decAll[decAll.length - 1 - i] != pad) {
+              throw StateError('Invalid PKCS7 padding');
+            }
+          }
+          final trimmed = decAll.sublist(0, decAll.length - pad);
+          if (trimmed.isNotEmpty) controller.add(trimmed);
+          controller.close();
+        } catch (e) {
+          controller.addError(e);
+          controller.close();
+        }
+      },
+      cancelOnError: true,
+    );
+
+    yield* controller.stream;
+  }
+}
+
+// Standalone EVP_BytesToKey helper (OpenSSL-compatible), returns key and iv.
+Map<String, Uint8List> _evpBytesToKeyStatic(
+  Uint8List pass,
+  Uint8List salt,
+  int keyLen,
+  int ivLen,
+) {
+  final totalLen = keyLen + ivLen;
+  final List<int> buffer = [];
+  Uint8List prev = Uint8List(0);
+  while (buffer.length < totalLen) {
+    final md = md5
+        .convert(Uint8List.fromList([...prev, ...pass, ...salt]))
+        .bytes;
+    buffer.addAll(md);
+    prev = Uint8List.fromList(md);
+  }
+  final key = Uint8List.fromList(buffer.sublist(0, keyLen));
+  final iv = Uint8List.fromList(buffer.sublist(keyLen, keyLen + ivLen));
+  return {'key': key, 'iv': iv};
 }
 
 void main() {
@@ -84,22 +220,24 @@ class _MyAppState extends State<MyApp> {
               (k, v) => MapEntry(k, (v as String)),
             );
           } else {
+            // treat as per-locale map
             for (final entry in map.entries) {
-              final loc = entry.key;
-              if (entry.value is Map) {
-                final inner = Map<String, dynamic>.from(
-                  (entry.value as Map).cast<String, dynamic>(),
+              final localeCode = entry.key;
+              final value = entry.value;
+              if (value is Map) {
+                final strMap = Map<String, dynamic>.from(
+                  value.cast<String, dynamic>(),
                 );
-                normalized[loc] = inner.map(
+                normalized[localeCode] = strMap.map(
                   (k, v) => MapEntry(k, (v as String)),
                 );
               }
             }
           }
         }
-        setState(() {
-          _custom = normalized;
-        });
+        if (normalized.isNotEmpty) {
+          setState(() => _custom = normalized);
+        }
       } catch (_) {
         // ignore parse errors
       }
@@ -275,6 +413,29 @@ class L10n {
       'choose_json_file': 'Choose JSON file',
       'ui_demo_warning':
           'Demo content — not for distribution. This Scripture audio/video is an unfinished draft in the local language. We are still reviewing it. Please help us test and correct these recordings so we can share the final version with everyone.',
+      // Confirm play dialog
+      'confirm_play_title': 'Start playback?',
+      'confirm_window_left': 'Window: {left} / {max} plays left',
+      'confirm_window_unlimited': 'Window: unlimited',
+      'confirm_lifetime_left': 'Lifetime: {left} / {max} plays left',
+      'confirm_lifetime_unlimited': 'Lifetime: unlimited',
+      'confirm_preview_free':
+          'The first {seconds}s are free before a play is charged.',
+      'start_playback': 'Start',
+      'cancel': 'Cancel',
+      // New UI
+      'fullscreen': 'Fullscreen',
+      'import_diagnostics': 'Import diagnostics',
+      'import_diagnostics_subtitle':
+          'Verbose import logs can help troubleshoot slow or failing imports',
+      'verbose_import_logs': 'Verbose import logs',
+      'view_last_import_log': 'View last import log',
+      'last_import_log': 'Last import log',
+      'copy': 'Copy',
+      'clear_logs': 'Clear logs',
+      'auto_fullscreen_on_rotate': 'Auto fullscreen on rotate',
+      'auto_fullscreen_on_rotate_desc':
+          'Automatically enter fullscreen when rotating device to landscape during video playback',
     },
     'es': {
       'app_title': 'Reproductor de demostración de Escrituras',
@@ -363,6 +524,29 @@ class L10n {
       'choose_json_file': 'Elegir archivo JSON',
       'ui_demo_warning':
           'Contenido de demostración — no para distribución. Este audio/video de las Escrituras es un borrador sin terminar en el idioma local. Aún lo estamos revisando. Por favor ayúdanos a probar y corregir estas grabaciones para poder compartir la versión final con todos.',
+      // Diálogo de confirmación de reproducción
+      'confirm_play_title': '¿Iniciar reproducción?',
+      'confirm_window_left': 'Ventana: {left} / {max} restantes',
+      'confirm_window_unlimited': 'Ventana: sin límite',
+      'confirm_lifetime_left': 'De por vida: {left} / {max} restantes',
+      'confirm_lifetime_unlimited': 'De por vida: sin límite',
+      'confirm_preview_free':
+          'Los primeros {seconds}s son gratis antes de cobrar una reproducción.',
+      'start_playback': 'Iniciar',
+      'cancel': 'Cancelar',
+      // New UI
+      'fullscreen': 'Pantalla completa',
+      'import_diagnostics': 'Diagnósticos de importación',
+      'import_diagnostics_subtitle':
+          'Los registros detallados de importación pueden ayudar a solucionar importaciones lentas o fallidas',
+      'verbose_import_logs': 'Registros de importación detallados',
+      'view_last_import_log': 'Ver el último registro de importación',
+      'last_import_log': 'Último registro de importación',
+      'copy': 'Copiar',
+      'clear_logs': 'Borrar registros',
+      'auto_fullscreen_on_rotate': 'Pantalla completa automática al girar',
+      'auto_fullscreen_on_rotate_desc':
+          'Entrar automáticamente en pantalla completa al girar el dispositivo a horizontal durante la reproducción de video',
     },
     'fr': {
       'app_title': 'Lecteur de démo des Écritures',
@@ -443,6 +627,29 @@ class L10n {
       'choose_json_file': 'Choisir un fichier JSON',
       'ui_demo_warning':
           'Contenu de démonstration — ne pas distribuer. Cet audio/vidéo des Écritures est un brouillon non finalisé dans la langue locale. Nous sommes encore en relecture. Aidez‑nous à tester et corriger ces enregistrements afin de partager la version finale avec tous.',
+      // Dialogue de confirmation de lecture
+      'confirm_play_title': 'Démarrer la lecture ?',
+      'confirm_window_left': 'Fenêtre : {left} / {max} restantes',
+      'confirm_window_unlimited': 'Fenêtre : illimité',
+      'confirm_lifetime_left': 'À vie : {left} / {max} restantes',
+      'confirm_lifetime_unlimited': 'À vie : illimité',
+      'confirm_preview_free':
+          'Les {seconds}s premières sont gratuites avant la facturation d’une lecture.',
+      'start_playback': 'Commencer',
+      'cancel': 'Annuler',
+      // New UI
+      'fullscreen': 'Plein écran',
+      'import_diagnostics': 'Diagnostics d’importation',
+      'import_diagnostics_subtitle':
+          'Les journaux d’importation détaillés peuvent aider à diagnostiquer des importations lentes ou en échec',
+      'verbose_import_logs': 'Journaux d’importation détaillés',
+      'view_last_import_log': 'Afficher le dernier journal d’importation',
+      'last_import_log': 'Dernier journal d’importation',
+      'copy': 'Copier',
+      'clear_logs': 'Effacer les journaux',
+      'auto_fullscreen_on_rotate': 'Plein écran automatique à la rotation',
+      'auto_fullscreen_on_rotate_desc':
+          'Passer automatiquement en plein écran lors de la rotation de l’appareil en paysage pendant la lecture vidéo',
     },
     'de': {
       'app_title': 'Schrift Demo-Player',
@@ -526,6 +733,29 @@ class L10n {
       'choose_json_file': 'JSON-Datei auswählen',
       'ui_demo_warning':
           'Demo-Inhalt — nicht zur Verbreitung. Dieses Schrift‑Audio/Video ist ein unfertiger Entwurf in der lokalen Sprache. Wir prüfen es noch. Bitte hilf uns, diese Aufnahmen zu testen und zu korrigieren, damit wir die endgültige Fassung mit allen teilen können.',
+      // Bestätigungsdialog Wiedergabe
+      'confirm_play_title': 'Wiedergabe starten?',
+      'confirm_window_left': 'Fenster: {left} / {max} Wiedergaben übrig',
+      'confirm_window_unlimited': 'Fenster: unbegrenzt',
+      'confirm_lifetime_left': 'Lebenszeit: {left} / {max} übrig',
+      'confirm_lifetime_unlimited': 'Lebenszeit: unbegrenzt',
+      'confirm_preview_free':
+          'Die ersten {seconds}s sind kostenlos, bevor eine Wiedergabe gezählt wird.',
+      'start_playback': 'Starten',
+      'cancel': 'Abbrechen',
+      // New UI
+      'fullscreen': 'Vollbild',
+      'import_diagnostics': 'Importdiagnose',
+      'import_diagnostics_subtitle':
+          'Ausführliche Importprotokolle können bei der Fehlersuche bei langsamen oder fehlschlagenden Importen helfen',
+      'verbose_import_logs': 'Ausführliche Importprotokolle',
+      'view_last_import_log': 'Letztes Importprotokoll anzeigen',
+      'last_import_log': 'Letztes Importprotokoll',
+      'copy': 'Kopieren',
+      'clear_logs': 'Protokolle löschen',
+      'auto_fullscreen_on_rotate': 'Automatisches Vollbild bei Drehen',
+      'auto_fullscreen_on_rotate_desc':
+          'Bei Drehung ins Querformat während der Videowiedergabe automatisch in den Vollbildmodus wechseln',
     },
     'nl': {
       'app_title': 'Schrift Demo-speler',
@@ -604,6 +834,29 @@ class L10n {
       'choose_json_file': 'JSON-bestand kiezen',
       'ui_demo_warning':
           'Demo-inhoud — niet voor verspreiding. Deze Schrift‑audio/video is een onvolledige conceptversie in de lokale taal. We beoordelen dit nog. Help ons testen en corrigeren zodat we de definitieve versie met iedereen kunnen delen.',
+      // Bevestigingsdialoog afspelen
+      'confirm_play_title': 'Weergave starten?',
+      'confirm_window_left': 'Venster: {left} / {max} over',
+      'confirm_window_unlimited': 'Venster: onbeperkt',
+      'confirm_lifetime_left': 'Levenslang: {left} / {max} over',
+      'confirm_lifetime_unlimited': 'Levenslang: onbeperkt',
+      'confirm_preview_free':
+          'De eerste {seconds}s zijn gratis voordat een weergave wordt geteld.',
+      'start_playback': 'Starten',
+      'cancel': 'Annuleren',
+      // New UI
+      'fullscreen': 'Volledig scherm',
+      'import_diagnostics': 'Importdiagnostiek',
+      'import_diagnostics_subtitle':
+          'Uitgebreide importlogs kunnen helpen bij het oplossen van trage of mislukte importen',
+      'verbose_import_logs': 'Uitgebreide importlogs',
+      'view_last_import_log': 'Laatste importlog bekijken',
+      'last_import_log': 'Laatste importlog',
+      'copy': 'Kopiëren',
+      'clear_logs': 'Logs wissen',
+      'auto_fullscreen_on_rotate': 'Automatisch volledig scherm bij draaien',
+      'auto_fullscreen_on_rotate_desc':
+          'Automatisch naar volledig scherm bij draaien naar landschap tijdens videoweergave',
     },
     'af': {
       'app_title': 'Skrif Demo Speler',
@@ -685,6 +938,29 @@ class L10n {
       'choose_json_file': 'Kies JSON-lêer',
       'ui_demo_warning':
           'Demo-inhoud — nie vir verspreiding nie. Hierdie Skrif‑klank/video is ’n onvoltooide konsep in die plaaslike taal. Ons hersien dit nog. Help ons asseblief om te toets en reg te stel sodat ons die finale weergawe met almal kan deel.',
+      // Bevestigingsdialoog vir afspeel
+      'confirm_play_title': 'Begin afspeel?',
+      'confirm_window_left': 'Venster: {left} / {max} oor',
+      'confirm_window_unlimited': 'Venster: onbeperk',
+      'confirm_lifetime_left': 'Lewenstyd: {left} / {max} oor',
+      'confirm_lifetime_unlimited': 'Lewenstyd: onbeperk',
+      'confirm_preview_free':
+          'Die eerste {seconds}s is gratis voordat ’n spel getel word.',
+      'start_playback': 'Begin',
+      'cancel': 'Kanselleer',
+      // New UI
+      'fullscreen': 'Volskerm',
+      'import_diagnostics': 'Invoerdiagnostiek',
+      'import_diagnostics_subtitle':
+          'Uitvoerige invoerlogboeke kan help om stadig of mislukte invoere reg te maak',
+      'verbose_import_logs': 'Uitvoerige invoerlogboeke',
+      'view_last_import_log': 'Sien laaste invoerlogboek',
+      'last_import_log': 'Laaste invoerlogboek',
+      'copy': 'Kopieer',
+      'clear_logs': 'Vee logboeke uit',
+      'auto_fullscreen_on_rotate': 'Outo-volskerm wanneer gedraai',
+      'auto_fullscreen_on_rotate_desc':
+          'Gaan outomaties na volskerm wanneer die toestel na landskap gedraai word tydens videoterugspeel',
     },
     'pt': {
       'app_title': 'Reprodutor de Demonstração das Escrituras',
@@ -768,6 +1044,29 @@ class L10n {
       'choose_json_file': 'Escolher arquivo JSON',
       'ui_demo_warning':
           'Conteúdo de demonstração — não para distribuição. Este áudio/vídeo das Escrituras é um rascunho inacabado no idioma local. Ainda estamos revisando. Ajude-nos a testar e corrigir estas gravações para que possamos compartilhar a versão final com todos.',
+      // Diálogo de confirmação de reprodução
+      'confirm_play_title': 'Iniciar reprodução?',
+      'confirm_window_left': 'Janela: {left} / {max} restantes',
+      'confirm_window_unlimited': 'Janela: sem limite',
+      'confirm_lifetime_left': 'Vitalício: {left} / {max} restantes',
+      'confirm_lifetime_unlimited': 'Vitalício: sem limite',
+      'confirm_preview_free':
+          'Os primeiros {seconds}s são gratuitos antes de contar uma reprodução.',
+      'start_playback': 'Iniciar',
+      'cancel': 'Cancelar',
+      // New UI
+      'fullscreen': 'Tela cheia',
+      'import_diagnostics': 'Diagnósticos de importação',
+      'import_diagnostics_subtitle':
+          'Logs detalhados de importação podem ajudar a solucionar importações lentas ou com falha',
+      'verbose_import_logs': 'Logs detalhados de importação',
+      'view_last_import_log': 'Ver o último log de importação',
+      'last_import_log': 'Último log de importação',
+      'copy': 'Copiar',
+      'clear_logs': 'Limpar logs',
+      'auto_fullscreen_on_rotate': 'Tela cheia automática ao girar',
+      'auto_fullscreen_on_rotate_desc':
+          'Entrar automaticamente em tela cheia ao girar o dispositivo para paisagem durante a reprodução de vídeo',
     },
     'id': {
       'app_title': 'Pemutar Demo Kitab Suci',
@@ -854,6 +1153,29 @@ class L10n {
       'choose_json_file': 'Pilih file JSON',
       'ui_demo_warning':
           'Konten demo — tidak untuk distribusi. Audio/video Kitab Suci ini masih draf dalam bahasa setempat. Kami masih meninjau. Mohon bantu kami menguji dan memperbaiki rekaman ini agar versi finalnya bisa dibagikan kepada semua orang.',
+      // Dialog konfirmasi pemutaran
+      'confirm_play_title': 'Mulai pemutaran?',
+      'confirm_window_left': 'Jendela: sisa {left} / {max}',
+      'confirm_window_unlimited': 'Jendela: tanpa batas',
+      'confirm_lifetime_left': 'Seumur hidup: sisa {left} / {max}',
+      'confirm_lifetime_unlimited': 'Seumur hidup: tanpa batas',
+      'confirm_preview_free':
+          'Detik {seconds} pertama gratis sebelum dihitung sebagai 1 kali putar.',
+      'start_playback': 'Mulai',
+      'cancel': 'Batal',
+      // New UI
+      'fullscreen': 'Layar penuh',
+      'import_diagnostics': 'Diagnostik impor',
+      'import_diagnostics_subtitle':
+          'Log impor terperinci dapat membantu menelusuri impor yang lambat atau gagal',
+      'verbose_import_logs': 'Log impor terperinci',
+      'view_last_import_log': 'Lihat log impor terakhir',
+      'last_import_log': 'Log impor terakhir',
+      'copy': 'Salin',
+      'clear_logs': 'Hapus log',
+      'auto_fullscreen_on_rotate': 'Layar penuh otomatis saat diputar',
+      'auto_fullscreen_on_rotate_desc':
+          'Masuk otomatis ke layar penuh saat memutar perangkat ke mode lanskap selama pemutaran video',
     },
     'ru': {
       'app_title': 'Демонстрационный плеер Писания',
@@ -936,6 +1258,29 @@ class L10n {
       'choose_json_file': 'Выбрать файл JSON',
       'ui_demo_warning':
           'Демонстрационный материал — не для распространения. Это аудио/видео Писания — черновик на местном языке. Мы всё ещё его проверяем. Пожалуйста, помогите нам тестировать и исправлять записи, чтобы потом поделиться финальной версией со всеми.',
+      // Диалог подтверждения воспроизведения
+      'confirm_play_title': 'Начать воспроизведение?',
+      'confirm_window_left': 'Окно: осталось {left} из {max}',
+      'confirm_window_unlimited': 'Окно: без ограничений',
+      'confirm_lifetime_left': 'За всю жизнь: осталось {left} из {max}',
+      'confirm_lifetime_unlimited': 'За всю жизнь: без ограничений',
+      'confirm_preview_free':
+          'Первые {seconds} с бесплатны, прежде чем засчитывается воспроизведение.',
+      'start_playback': 'Начать',
+      'cancel': 'Отмена',
+      // Новые элементы интерфейса
+      'fullscreen': 'Полноэкранный режим',
+      'import_diagnostics': 'Диагностика импорта',
+      'import_diagnostics_subtitle':
+          'Подробные журналы импорта помогают устранять проблемы медленного или неудачного импорта',
+      'verbose_import_logs': 'Подробные журналы импорта',
+      'view_last_import_log': 'Посмотреть последний журнал импорта',
+      'last_import_log': 'Последний журнал импорта',
+      'copy': 'Копировать',
+      'clear_logs': 'Очистить журналы',
+      'auto_fullscreen_on_rotate': 'Авто полноэкранный при повороте',
+      'auto_fullscreen_on_rotate_desc':
+          'Автоматически переходить в полноэкранный режим при повороте устройства в ландшафтный режим во время воспроизведения видео',
     },
     'hi': {
       'app_title': 'शास्त्र डेमो प्लेयर',
@@ -1016,6 +1361,29 @@ class L10n {
       'choose_json_file': 'JSON फ़ाइल चुनें',
       'ui_demo_warning':
           'डेमो सामग्री — वितरण के लिए नहीं। यह शास्त्र का ऑडियो/वीडियो स्थानीय भाषा में अधूरा मसौदा है। हम अभी इसकी समीक्षा कर रहे हैं। कृपया इन रिकॉर्डिंग्स का परीक्षण और संशोधन करने में हमारी मदद करें, ताकि अंतिम संस्करण हम सभी के साथ बाँट सकें।',
+      // पुष्टि संवाद — प्लेबैक
+      'confirm_play_title': 'प्लेबैक शुरू करें?',
+      'confirm_window_left': 'विंडो: {left} / {max} शेष',
+      'confirm_window_unlimited': 'विंडो: असीमित',
+      'confirm_lifetime_left': 'आजीवन: {left} / {max} शेष',
+      'confirm_lifetime_unlimited': 'आजीवन: असीमित',
+      'confirm_preview_free':
+          'पहले {seconds} सेकंड मुफ़्त हैं, उसके बाद प्ले गिना जाएगा।',
+      'start_playback': 'शुरू करें',
+      'cancel': 'रद्द करें',
+      // नए UI
+      'fullscreen': 'पूर्ण स्क्रीन',
+      'import_diagnostics': 'आयात निदान',
+      'import_diagnostics_subtitle':
+          'विस्तृत आयात लॉग धीमे या असफल आयात की समस्या निवारण में मदद कर सकते हैं',
+      'verbose_import_logs': 'विस्तृत आयात लॉग',
+      'view_last_import_log': 'अंतिम आयात लॉग देखें',
+      'last_import_log': 'अंतिम आयात लॉग',
+      'copy': 'कॉपी',
+      'clear_logs': 'लॉग साफ़ करें',
+      'auto_fullscreen_on_rotate': 'घुमाने पर स्वतः पूर्ण स्क्रीन',
+      'auto_fullscreen_on_rotate_desc':
+          'वीडियो चलने के दौरान डिवाइस को लैंडस्केप घुमाने पर स्वतः पूर्ण स्क्रीन में जाएँ',
     },
     'ar': {
       'app_title': 'مشغل عرض الكتاب المقدس',
@@ -1093,6 +1461,29 @@ class L10n {
       'choose_json_file': 'اختر ملف JSON',
       'ui_demo_warning':
           'محتوى تجريبي — غير مخصّص للتوزيع. هذا صوت/فيديو للكتاب المقدّس هو مسودة غير مكتملة باللغة المحلية. ما زلنا نراجعه. الرجاء مساعدتنا في اختبار هذه التسجيلات وتصحيحها لكي نشارك النسخة النهائية مع الجميع.',
+      // مربع حوار التأكيد للتشغيل
+      'confirm_play_title': 'بدء التشغيل؟',
+      'confirm_window_left': 'النافذة: متبقٍ {left} من {max}',
+      'confirm_window_unlimited': 'النافذة: غير محدود',
+      'confirm_lifetime_left': 'مدى الحياة: متبقٍ {left} من {max}',
+      'confirm_lifetime_unlimited': 'مدى الحياة: غير محدود',
+      'confirm_preview_free':
+          'الثواني الأولى {seconds} مجانية قبل احتساب تشغيل واحد.',
+      'start_playback': 'ابدأ',
+      'cancel': 'إلغاء',
+      // واجهة جديدة
+      'fullscreen': 'وضع ملء الشاشة',
+      'import_diagnostics': 'تشخيص الاستيراد',
+      'import_diagnostics_subtitle':
+          'يمكن أن تساعد سجلات الاستيراد المفصلة في استكشاف أخطاء الاستيراد البطيء أو الفاشل',
+      'verbose_import_logs': 'سجلات الاستيراد المفصلة',
+      'view_last_import_log': 'عرض آخر سجل استيراد',
+      'last_import_log': 'آخر سجل استيراد',
+      'copy': 'نسخ',
+      'clear_logs': 'مسح السجلات',
+      'auto_fullscreen_on_rotate': 'ملء الشاشة تلقائيًا عند التدوير',
+      'auto_fullscreen_on_rotate_desc':
+          'الانتقال تلقائيًا إلى وضع ملء الشاشة عند تدوير الجهاز إلى الوضع الأفقي أثناء تشغيل الفيديو',
     },
     'zh': {
       'app_title': '经文演示播放器',
@@ -1160,6 +1551,26 @@ class L10n {
       'choose_json_file': '选择 JSON 文件',
       'ui_demo_warning':
           '演示内容——请勿传播。此本地语言的经文音频/视频尚未定稿，我们仍在审校。请帮助我们测试并修订这些录音，以便将最终版本与大家分享。',
+      // 播放确认对话框
+      'confirm_play_title': '开始播放？',
+      'confirm_window_left': '窗口：剩余 {left} / {max}',
+      'confirm_window_unlimited': '窗口：无限制',
+      'confirm_lifetime_left': '终身：剩余 {left} / {max}',
+      'confirm_lifetime_unlimited': '终身：无限制',
+      'confirm_preview_free': '前 {seconds} 秒免费，之后计为一次播放。',
+      'start_playback': '开始',
+      'cancel': '取消',
+      // 新增 UI
+      'fullscreen': '全屏',
+      'import_diagnostics': '导入诊断',
+      'import_diagnostics_subtitle': '详细导入日志有助于排查导入缓慢或失败的问题',
+      'verbose_import_logs': '详细导入日志',
+      'view_last_import_log': '查看最近一次导入日志',
+      'last_import_log': '最近一次导入日志',
+      'copy': '复制',
+      'clear_logs': '清除日志',
+      'auto_fullscreen_on_rotate': '旋转时自动全屏',
+      'auto_fullscreen_on_rotate_desc': '设备在视频播放时旋转到横屏将自动进入全屏',
     },
     'tpi': {
       'app_title': 'Scripture Demo Pleya',
@@ -1237,6 +1648,29 @@ class L10n {
       'choose_json_file': 'Makim JSON fail',
       'ui_demo_warning':
           'Demosain samting — no bilong givaut. Dispela Tok Baibel audio/vidio em i draf yet long tokples. Mipela yet wok long skelim. Plis helpim mipela long traim na stretim ol rekoding olsem bai mipela ken kisim pinis na salim wantaim olgeta.',
+      // Tokaut bipo long pilai
+      'confirm_play_title': 'Statim pilai?',
+      'confirm_window_left': 'Win: {left} / {max} i stap yet',
+      'confirm_window_unlimited': 'Win: i no gat mak',
+      'confirm_lifetime_left': 'Olgeta taim: {left} / {max} i stap yet',
+      'confirm_lifetime_unlimited': 'Olgeta taim: i no gat mak',
+      'confirm_preview_free':
+          'Fes {seconds}s em fri pastaim bipo yumi kaunim wanpela pilai.',
+      'start_playback': 'Stat',
+      'cancel': 'Kanselim',
+      // Nupela UI
+      'fullscreen': 'Fulskrin',
+      'import_diagnostics': 'Diagnostiks bilong import',
+      'import_diagnostics_subtitle':
+          'Bigpela ripot bilong import inap helpim long stretim hevi bilong slos o poret import',
+      'verbose_import_logs': 'Bigpela ripot bilong import',
+      'view_last_import_log': 'Lukim las ripot bilong import',
+      'last_import_log': 'Las ripot bilong import',
+      'copy': 'Kopi',
+      'clear_logs': 'Klinim ol ripot',
+      'auto_fullscreen_on_rotate': 'Fulskrin wantaim tanim nating',
+      'auto_fullscreen_on_rotate_desc':
+          'Taim yu tanim telefon i go long sait long taim video i plei, em bai go long fulskrin yet',
     },
   };
   // Interpolation with {placeholders}
@@ -1318,15 +1752,57 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _playChargeTimer;
   bool _sessionActive = false;
   bool _sessionCharged = false;
+  // Free preview period before any play is charged (from bundle config; default 5s)
+  Duration _freePreviewFor(String fileName) {
+    try {
+      final cfg = _bundleConfig;
+      int? seconds;
+      if (cfg != null) {
+        // Per-file override
+        final m = _findMediaConfig(fileName);
+        if (m != null) {
+          final Map<String, dynamic>? limit = (m['playbackLimit'] as Map?)
+              ?.cast<String, dynamic>();
+          seconds = (limit?['freePreviewSeconds'] as num?)?.toInt();
+        }
+        // Default fallback
+        if (seconds == null) {
+          final Map<String, dynamic>? defaults = (cfg['playbackLimits'] as Map?)
+              ?.cast<String, dynamic>();
+          final Map<String, dynamic>? def = (defaults?['default'] as Map?)
+              ?.cast<String, dynamic>();
+          seconds = (def?['freePreviewSeconds'] as num?)?.toInt();
+        }
+      }
+      seconds ??= 5;
+      if (seconds < 0) seconds = 0;
+      return Duration(seconds: seconds);
+    } catch (_) {
+      return const Duration(seconds: 5);
+    }
+  }
+
   // Playlist reservation: counters reserved at play start and fulfilled on progress
   bool _playlistCountersReserved = false;
   bool _playlistReservationFulfilled = false;
+  // Import progress UI
+  bool _importInProgress = false;
+  double _importProgress = 0.0; // 0..1
+  String? _importLabel;
   // Track last saved position (ms) to throttle persistence
   int _lastSavedPosMs = 0;
   // Stream subscriptions for receiving shared files
   late StreamSubscription<List<SharedMediaFile>> _intentDataStreamSubscription;
   // UI ticker to refresh countdowns in list and headers
   Timer? _uiTicker;
+  // Verbose import logging
+  bool _verboseImportLogs = false;
+  IOSink? _importLogSink;
+  DateTime? _logStartTime;
+  // Track fullscreen route to avoid re-entrancy on orientation changes
+  bool _inFullscreen = false;
+  // Preference: auto-enter fullscreen on landscape rotation
+  bool _autoFullscreenOnRotate = true;
 
   @override
   void initState() {
@@ -1339,6 +1815,84 @@ class _MyHomePageState extends State<MyHomePage> {
     _uiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+    _loadVerbosePref();
+    _loadAutoFullscreenPref();
+  }
+
+  Future<void> _loadVerbosePref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _verboseImportLogs = prefs.getBool('verboseImportLogs') ?? false;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadAutoFullscreenPref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _autoFullscreenOnRotate =
+            prefs.getBool('autoFullscreenOnRotate') ?? true;
+      });
+    } catch (_) {}
+  }
+
+  Future<Directory> _logsDir() async {
+    final docs = await getApplicationDocumentsDirectory();
+    final dir = Directory('${docs.path}/logs');
+    await dir.create(recursive: true);
+    return dir;
+  }
+
+  String _ts() => DateTime.now().toIso8601String();
+
+  Future<void> _openImportLog(String bundlePath) async {
+    if (!_verboseImportLogs) return;
+    try {
+      final dir = await _logsDir();
+      final name = 'import-${DateTime.now().millisecondsSinceEpoch}.txt';
+      final file = File('${dir.path}/$name');
+      _importLogSink = file.openWrite(mode: FileMode.writeOnlyAppend);
+      _logStartTime = DateTime.now();
+      _vlog('=== Import started ${_ts()} ===');
+      _vlog('Device: $_deviceId');
+      _vlog('Bundle: $bundlePath');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('lastImportLogPath', file.path);
+    } catch (_) {}
+  }
+
+  void _vlog(String line) {
+    try {
+      // ignore: avoid_print
+      print('[IMPORT] $line');
+      final s = _importLogSink;
+      if (s != null) s.writeln('${_ts()} | $line');
+    } catch (_) {}
+  }
+
+  Future<void> _closeImportLog({bool success = true, String? error}) async {
+    if (_importLogSink == null) return;
+    try {
+      final dur = _logStartTime != null
+          ? DateTime.now().difference(_logStartTime!)
+          : null;
+      if (success) {
+        _vlog(
+          '=== Import finished OK. Duration: ${dur?.inMilliseconds} ms ===',
+        );
+      } else {
+        _vlog(
+          '=== Import failed. ${error ?? ''} Duration: ${dur?.inMilliseconds} ms ===',
+        );
+      }
+      await _importLogSink!.flush();
+      await _importLogSink!.close();
+    } catch (_) {}
+    _importLogSink = null;
+    _logStartTime = null;
   }
 
   Future<void> _configureAudioSession() async {
@@ -1467,6 +2021,9 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _isLoading = true;
       _status = _t('status_picking_file');
+      _importInProgress = false;
+      _importProgress = 0.0;
+      _importLabel = null;
     });
     try {
       FilePickerResult? result;
@@ -1505,54 +2062,151 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _isLoading = true;
       _status = _t('status_extracting_bundle');
+      _importInProgress = true;
+      _importProgress = 0.0;
+      _importLabel = _t('status_extracting_bundle');
     });
+    await _openImportLog(bundlePath);
+    _vlog('Begin import.');
+    // Watchdog to detect stalls and cancel long-running operations on very slow devices
+    bool cancelled = false;
+    String? cancelMsg;
+    DateTime lastActivity = DateTime.now();
+    Timer? watchdog;
+    void startWatchdog() {
+      watchdog?.cancel();
+      watchdog = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!cancelled &&
+            DateTime.now().difference(lastActivity) >
+                const Duration(minutes: 2)) {
+          cancelled = true;
+          cancelMsg =
+              'Extraction stalled. Please retry after checking device storage and permissions.';
+        }
+      });
+    }
+
+    void stopWatchdog() {
+      watchdog?.cancel();
+      watchdog = null;
+    }
+
+    startWatchdog();
     try {
       final tempDir = await getTemporaryDirectory();
       final extractionPath = '${tempDir.path}/bundle_extract';
       await Directory(extractionPath).create(recursive: true);
 
-      // Decompress .tar.gz (.smbundle) using a file stream to reduce peak memory
-      final input = InputFileStream(bundlePath);
-      final tarBytes = GZipDecoder().decodeBuffer(input);
-      input.close();
-      final archive = TarDecoder().decodeBytes(tarBytes);
-      for (final file in archive) {
-        final outPath = '$extractionPath/${file.name}';
-        if (file.isFile) {
-          final outDir = Directory(File(outPath).parent.path);
-          if (!await outDir.exists()) {
-            await outDir.create(recursive: true);
+      // Decompress .tar.gz (.smbundle) to a temporary .tar file using async streams (non-blocking)
+      final tarOutPath = '$extractionPath/.tmp_bundle.tar';
+      try {
+        final inFile = File(bundlePath);
+        final totalCompressed = await inFile.length().catchError((_) => 0);
+        _vlog('Phase: decompress (.gz -> .tar), size=$totalCompressed bytes');
+        int readCompressed = 0;
+        DateTime lastUi = DateTime.now();
+
+        // Wrap the input stream to count bytes read for progress
+        final countingStream = inFile
+            .openRead()
+            .transform(
+              StreamTransformer<List<int>, List<int>>.fromHandlers(
+                handleData: (data, sink) {
+                  if (cancelled) {
+                    sink.addError(StateError('cancelled'));
+                    return;
+                  }
+                  readCompressed += data.length;
+                  sink.add(data);
+                  lastActivity = DateTime.now();
+                  // Throttle UI updates to ~10 per second
+                  final now = DateTime.now();
+                  if (mounted &&
+                      totalCompressed > 0 &&
+                      now.difference(lastUi).inMilliseconds >= 100) {
+                    lastUi = now;
+                    final pct = (readCompressed / totalCompressed).clamp(
+                      0.0,
+                      1.0,
+                    );
+                    setState(() {
+                      _importProgress = pct.toDouble();
+                      _importLabel =
+                          '${_t('status_extracting_bundle')} (decompressing ${(pct * 100).toStringAsFixed(0)}%)';
+                    });
+                  }
+                },
+              ),
+            )
+            .timeout(const Duration(minutes: 2));
+
+        final outSink = File(tarOutPath).openWrite();
+        try {
+          await countingStream.transform(gzip.decoder).pipe(outSink);
+        } on TimeoutException {
+          cancelled = true;
+          cancelMsg =
+              'Extraction timed out while decompressing. Please try again.';
+          rethrow;
+        } on StateError catch (se) {
+          if (se.message.contains('cancelled')) {
+            rethrow;
           }
-          final output = OutputFileStream(outPath);
-          file.writeContent(output);
-          output.close();
-        } else {
-          await Directory(outPath).create(recursive: true);
+          rethrow;
+        } finally {
+          await outSink.close();
         }
+
+        // Ensure progress reaches 100% for the decompress stage
+        if (mounted && totalCompressed > 0) {
+          setState(() {
+            _importProgress = 1.0;
+            _importLabel =
+                '${_t('status_extracting_bundle')} (decompressing 100%)';
+          });
+          _vlog('Decompress complete.');
+        }
+      } catch (e) {
+        final msg = cancelled
+            ? (cancelMsg ?? 'Extraction cancelled due to inactivity.')
+            : 'Corrupt or unsupported gzip archive';
+        _vlog('Decompress failed: $e');
+        setState(() => _status = _t('status_error_generic', {'message': msg}));
+        await _closeImportLog(success: false, error: msg);
+        return;
       }
 
       // Decrypt and validate bundle.smb config with shared key (REQUIRED)
-      final cfgFile = File('$extractionPath/bundle.smb');
+      // First pass: read only bundle.smb from tar into memory and decrypt config
       Map<String, dynamic>? config;
-      if (await cfgFile.exists()) {
-        try {
-          final rawText = await cfgFile.readAsString();
-          final decrypted = _cryptoJsAesDecrypt(rawText, _configSharedKey);
-          if (decrypted == null) {
-            await _deleteDirectory(Directory(extractionPath));
-            setState(() => _status = _t('error_open_bundle_config'));
-            return;
-          }
-          config = json.decode(utf8.decode(decrypted)) as Map<String, dynamic>;
-          // Do not assign to _bundleConfig here; finalize only after policy checks pass
-        } catch (e) {
+      try {
+        final cfgBytes = await _readTarEntryBytes(
+          tarOutPath,
+          (name) => name.split('/').last == 'bundle.smb',
+        );
+        if (cfgBytes == null) {
           await _deleteDirectory(Directory(extractionPath));
-          setState(() => _status = _t('error_open_bundle_config'));
+          setState(() => _status = _t('error_missing_bundle_config'));
+          _vlog('Missing bundle.smb in tar.');
+          await _closeImportLog(success: false, error: 'missing config');
           return;
         }
-      } else {
+        final rawText = utf8.decode(cfgBytes);
+        final decrypted = _cryptoJsAesDecrypt(rawText, _configSharedKey);
+        if (decrypted == null) {
+          await _deleteDirectory(Directory(extractionPath));
+          setState(() => _status = _t('error_open_bundle_config'));
+          _vlog('Failed to decrypt bundle.smb with shared key.');
+          await _closeImportLog(success: false, error: 'config decrypt failed');
+          return;
+        }
+        config = json.decode(utf8.decode(decrypted)) as Map<String, dynamic>;
+        _vlog('Config decrypted OK.');
+      } catch (e) {
         await _deleteDirectory(Directory(extractionPath));
-        setState(() => _status = _t('error_missing_bundle_config'));
+        setState(() => _status = _t('error_open_bundle_config'));
+        _vlog('Config read/decode error: $e');
+        await _closeImportLog(success: false, error: 'config open error');
         return;
       }
 
@@ -1563,12 +2217,17 @@ class _MyHomePageState extends State<MyHomePage> {
         if (allowed.isEmpty || !allowed.contains(_deviceId)) {
           await _deleteDirectory(Directory(extractionPath));
           setState(() => _status = _t('error_device_not_authorized'));
+          _vlog('Unauthorized device.');
+          await _closeImportLog(success: false, error: 'unauthorized device');
           return;
         }
         setState(() => _status = _t('status_config_verified'));
+        _vlog('Device authorization OK.');
       } catch (e) {
         await _deleteDirectory(Directory(extractionPath));
         setState(() => _status = _t('error_invalid_bundle_config'));
+        _vlog('Invalid bundle config: $e');
+        await _closeImportLog(success: false, error: 'invalid config');
         return;
       }
 
@@ -1609,12 +2268,115 @@ class _MyHomePageState extends State<MyHomePage> {
         await contentDir.create(recursive: true);
       }
 
-      // Decrypt media based on config mapping so filenames match original fileName
-      setState(() => _status = _t('status_decrypting_media'));
+      // Determine effective decryption key: unwrap per-device bundle key if present
       final deviceKey = _generateDeviceKey(_deviceId, _saltConst);
+      String effectiveKey = deviceKey;
+      try {
+        final Map<String, dynamic>? wrappedMap =
+            (config['bundleKeyEncryptedForDevices'] as Map?)
+                ?.cast<String, dynamic>();
+        if (wrappedMap != null) {
+          final wrapped = wrappedMap[_deviceId] as String?;
+          if (wrapped == null) {
+            await _deleteDirectory(Directory(extractionPath));
+            setState(() => _status = _t('error_device_not_authorized'));
+            return;
+          }
+          final unwrapped = _cryptoJsAesDecrypt(wrapped, deviceKey);
+          if (unwrapped == null) {
+            await _deleteDirectory(Directory(extractionPath));
+            setState(() => _status = _t('error_device_not_authorized'));
+            return;
+          }
+          effectiveKey = utf8.decode(unwrapped);
+        }
+      } catch (_) {
+        // Fallback to deviceKey if mapping missing/unexpected
+      }
+
+      // Second pass: selectively extract only the encrypted media files we need
+      try {
+        final mediaPaths = <String>{};
+        final List<dynamic> mediaList =
+            (config['mediaFiles'] as List?) ?? <dynamic>[];
+        for (final item in mediaList) {
+          if (item is! Map) continue;
+          final encPath = item['encryptedPath'] as String?;
+          if (encPath != null && encPath.isNotEmpty) {
+            mediaPaths.add(encPath);
+          }
+        }
+        // Estimate total bytes to extract and show it
+        final totalBytes = await _estimateTarEntriesSize(
+          tarOutPath,
+          mediaPaths,
+        );
+        _vlog(
+          'Phase: tar extract (selective). files=${mediaPaths.length}, totalBytes~$totalBytes',
+        );
+        if (mounted) {
+          setState(() {
+            _importProgress = 0.0;
+            _importLabel =
+                '${_t('status_extracting_bundle')} (~${_formatBytes(totalBytes)} needed)';
+          });
+        }
+        int extractedBytes = 0;
+        DateTime lastUiTick = DateTime.now();
+        await _extractTarEntries(
+          tarOutPath,
+          mediaPaths,
+          extractionPath,
+          onProgress: (int wrote, int total, String currentName) {
+            extractedBytes += wrote;
+            final prog = total > 0 ? extractedBytes / total : 0.0;
+            lastActivity = DateTime.now();
+            if (!mounted) return;
+            // Throttle UI updates to ~10/s or update on completion
+            final now = DateTime.now();
+            if (now.difference(lastUiTick).inMilliseconds >= 100 ||
+                prog >= 1.0) {
+              lastUiTick = now;
+              setState(() {
+                _importProgress = prog.clamp(0.0, 1.0);
+                _importLabel =
+                    '${_t('status_extracting_bundle')} ${(_importProgress * 100).toStringAsFixed(0)}%';
+              });
+            }
+          },
+          isCancelled: () => cancelled,
+          totalBytes: totalBytes,
+        );
+        _vlog('Tar extract complete.');
+      } catch (e) {
+        await _deleteDirectory(Directory(extractionPath));
+        final msg =
+            '$e'.toLowerCase().contains('no space') || '$e'.contains('ENOSPC')
+            ? 'Insufficient storage space. Please free up space and try again.'
+            : (cancelMsg ?? 'Failed to extract media files');
+        _vlog('Tar extract failed: $e');
+        setState(() => _status = _t('status_error_generic', {'message': msg}));
+        await _closeImportLog(success: false, error: msg);
+        return;
+      } finally {
+        // Remove temp tar
+        try {
+          await File(tarOutPath).delete();
+        } catch (_) {}
+      }
+
+      // Decrypt/Deobfuscate media based on config mapping so filenames match original fileName
+      setState(() {
+        _status = _t('status_decrypting_media');
+        _importProgress = 0.0;
+        _importLabel = _t('status_decrypting_media');
+      });
+      _vlog('Phase: media decode/deobfuscate.');
       File? firstDecrypted;
       final List<dynamic> mediaList =
           (config['mediaFiles'] as List?) ?? <dynamic>[];
+      int decIdx = 0;
+      final decTotal = mediaList.length;
       for (final item in mediaList) {
         if (item is! Map) continue;
         final encPath = item['encryptedPath'] as String?;
@@ -1623,15 +2385,56 @@ class _MyHomePageState extends State<MyHomePage> {
         final srcFile = File('$extractionPath/$encPath');
         if (!await srcFile.exists()) continue;
         try {
-          final encText = await srcFile.readAsString();
-          final plainBytes = _cryptoJsAesDecrypt(encText, deviceKey);
-          if (plainBytes == null) continue;
-          final mediaBytes = base64.decode(utf8.decode(plainBytes));
-          final outFile = File('${contentDir.path}/$origName');
-          await outFile.writeAsBytes(mediaBytes);
-          firstDecrypted ??= outFile;
-        } catch (_) {
-          // skip bad file
+          final outPath = '${contentDir.path}/$origName';
+          final Map<String, dynamic>? protection = (item['protection'] as Map?)
+              ?.cast<String, dynamic>();
+          final scheme = protection?['scheme'] as String?;
+          if (scheme == 'xor-v1') {
+            final saltB64 = protection?['salt'] as String?;
+            final salt = (saltB64 != null && saltB64.isNotEmpty)
+                ? base64.decode(saltB64)
+                : Uint8List(0);
+            _vlog('Deobfuscate xor-v1: $encPath -> $origName');
+            await _deobfuscateFileStreaming(
+              srcFile.path,
+              outPath,
+              effectiveKey,
+              salt,
+            );
+          } else {
+            _vlog('Legacy AES decrypt: $encPath -> $origName');
+            // Default legacy AES(CryptoJS) path
+            await _decryptEncFileToFileStreaming(
+              srcFile.path,
+              outPath,
+              effectiveKey,
+              onProgress: (_) {},
+            );
+          }
+          firstDecrypted ??= File(outPath);
+        } on FileSystemException catch (fe) {
+          final msg =
+              (fe.osError?.errorCode == 28 ||
+                  '${fe.osError}'.toLowerCase().contains('no space'))
+              ? 'Insufficient storage space. Please free up space and try again.'
+              : 'Failed to write media file';
+          _vlog('Write error: ${fe.osError}');
+          setState(
+            () => _status = _t('status_error_generic', {'message': msg}),
+          );
+          await _closeImportLog(success: false, error: msg);
+          return;
+        } catch (e) {
+          // Corrupt or unexpected encryption format; skip this item
+          _vlog('Decode error for $encPath: $e');
+        }
+        decIdx++;
+        if (mounted && decTotal > 0) {
+          setState(() {
+            _importProgress = decIdx / decTotal;
+            _importLabel =
+                '${_t('status_decrypting_media')} ${(_importProgress * 100).toStringAsFixed(0)}%';
+          });
         }
       }
 
@@ -1672,14 +2475,36 @@ class _MyHomePageState extends State<MyHomePage> {
       try {
         await File(bundlePath).delete();
       } catch (_) {}
+      _vlog('Cleanup complete.');
+      await _closeImportLog(success: true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _status = _t('status_error_generic', {'message': '$e'}));
+      _vlog('Unhandled error: $e');
+      await _closeImportLog(success: false, error: '$e');
     } finally {
+      stopWatchdog();
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _importInProgress = false;
+          _importProgress = 0.0;
+          _importLabel = null;
+        });
       }
     }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    double b = bytes.toDouble();
+    int i = 0;
+    while (b >= 1024 && i < units.length - 1) {
+      b /= 1024;
+      i++;
+    }
+    return '${b.toStringAsFixed(i == 0 ? 0 : 1)} ${units[i]}';
   }
 
   // ==== CryptoJS AES(passphrase) compatibility helpers ====
@@ -1738,7 +2563,124 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _initializePlayer(String mediaPath) {
+  // Stream a large encrypted base64 file -> decrypt (OpenSSL salted AES-256-CBC, PKCS7) -> decode base64 -> write to dst
+  Future<void> _decryptEncFileToFileStreaming(
+    String srcEncPath,
+    String dstPath,
+    String passphrase, {
+    void Function(int wroteBytes)? onProgress,
+  }) async {
+    // Write to a temp path then atomically replace
+    final outTmp = File('$dstPath.part');
+    try {
+      final outSink = outTmp.openWrite();
+      try {
+        // file (text base64) -> utf8 -> base64.decode -> encrypted bytes
+        final encryptedBytes = File(
+          srcEncPath,
+        ).openRead().transform(utf8.decoder).transform(base64.decoder);
+
+        // Decrypt encrypted bytes stream (handles Salted__ header + PKCS7)
+        final decryptedPlaintextBytes = encryptedBytes.transform(
+          _OpenSslAesCbcPkcs7StreamDecryptor(passphrase),
+        );
+
+        // Decrypted plaintext is base64 text of the media; decode to binary
+        // bytes and pipe to file.
+        final mediaBytes = decryptedPlaintextBytes
+            .transform(utf8.decoder)
+            .transform(base64.decoder);
+
+        // Pipe with optional progress callback
+        await mediaBytes
+            .map((chunk) {
+              if (onProgress != null) onProgress(chunk.length);
+              return chunk;
+            })
+            .pipe(outSink);
+      } finally {
+        await outSink.close();
+      }
+      // Replace existing file
+      final dstFile = File(dstPath);
+      try {
+        if (await dstFile.exists()) await dstFile.delete();
+      } catch (_) {}
+      await outTmp.rename(dstPath);
+    } catch (e) {
+      try {
+        if (await outTmp.exists()) await outTmp.delete();
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  // Lightweight XOR-based deobfuscation (not cryptographically secure)
+  // Mirrors desktop bundler's xor-v1 protection scheme.
+  Future<void> _deobfuscateFileStreaming(
+    String srcPath,
+    String dstPath,
+    String keyHex,
+    Uint8List salt,
+  ) async {
+    final outTmp = File('$dstPath.part');
+    RandomAccessFile? inFile;
+    IOSink? outSink;
+    try {
+      inFile = await File(srcPath).open();
+      outSink = outTmp.openWrite();
+      final key = _hexToBytes(keyHex);
+      if (key.isEmpty) {
+        throw StateError('Invalid key');
+      }
+      int offset = 0;
+      const chunkSize = 128 * 1024;
+      while (true) {
+        final data = await inFile.read(chunkSize);
+        if (data.isEmpty) break;
+        final out = Uint8List(data.length);
+        for (int i = 0; i < data.length; i++) {
+          final pos = offset + i;
+          final k = key[pos % key.length];
+          final s = salt.isNotEmpty ? salt[pos % salt.length] : 0;
+          final mask = (k ^ s ^ ((pos * 31) & 0xff)) & 0xff;
+          out[i] = data[i] ^ mask;
+        }
+        outSink.add(out);
+        offset += data.length;
+      }
+      await outSink.close();
+      try {
+        if (await File(dstPath).exists()) await File(dstPath).delete();
+      } catch (_) {}
+      await outTmp.rename(dstPath);
+    } catch (e) {
+      try {
+        await outSink?.close();
+      } catch (_) {}
+      try {
+        if (await outTmp.exists()) await outTmp.delete();
+      } catch (_) {}
+      rethrow;
+    } finally {
+      try {
+        await inFile?.close();
+      } catch (_) {}
+    }
+  }
+
+  Uint8List _hexToBytes(String hex) {
+    final clean = hex.trim();
+    final len = clean.length;
+    if (len % 2 != 0) return Uint8List(0);
+    final out = Uint8List(len ~/ 2);
+    for (int i = 0; i < len; i += 2) {
+      out[i ~/ 2] = int.parse(clean.substring(i, i + 2), radix: 16);
+    }
+    return out;
+  }
+
+  void _initializePlayer(String mediaPath, {bool autoPlay = false}) {
     // Finalize any active session before switching media
     _finalizePlaySession();
     _controller?.dispose();
@@ -1751,8 +2693,48 @@ class _MyHomePageState extends State<MyHomePage> {
         // Restore last saved position, if any (forward-only scrubbing still enforced)
         _restoreSavedPosition();
         setState(() {});
-        _attemptAutoPlay();
+        if (autoPlay) {
+          _attemptAutoPlay();
+        }
       });
+  }
+
+  Future<void> _goFullscreen() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    if (_inFullscreen) return;
+    _inFullscreen = true;
+    try {
+      await services.SystemChrome.setEnabledSystemUIMode(
+        services.SystemUiMode.immersiveSticky,
+      );
+      // Allow portraitUp as well so we can detect a portrait rotation
+      // and gracefully exit fullscreen when user flips the device back.
+      await services.SystemChrome.setPreferredOrientations(const [
+        services.DeviceOrientation.landscapeLeft,
+        services.DeviceOrientation.landscapeRight,
+        services.DeviceOrientation.portraitUp,
+      ]);
+    } catch (_) {}
+
+    if (!mounted) return;
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => _FullscreenVideoPage(controller: c)),
+      );
+    } finally {
+      _inFullscreen = false;
+    }
+
+    // Restore UI and portrait orientation on exit
+    try {
+      await services.SystemChrome.setEnabledSystemUIMode(
+        services.SystemUiMode.edgeToEdge,
+      );
+      await services.SystemChrome.setPreferredOrientations(const [
+        services.DeviceOrientation.portraitUp,
+      ]);
+    } catch (_) {}
   }
 
   Future<void> _attemptAutoPlay() async {
@@ -1945,8 +2927,16 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _stopAndCharge() async {
     final c = _controller;
     if (c == null) return;
-    final hadProgress = c.value.position > Duration.zero;
-    if (hadProgress && _currentMediaId != null) {
+    final pos = c.value.position;
+    final dur = c.value.duration;
+    final name = _currentMediaId;
+    final preview = name != null
+        ? _freePreviewFor(name)
+        : const Duration(seconds: 5);
+    final meetsThreshold =
+        pos >= preview ||
+        (dur > Duration.zero && pos >= dur - const Duration(milliseconds: 250));
+    if (meetsThreshold && _currentMediaId != null) {
       await _incrementPlaysUsed(_currentMediaId!);
       _sessionCharged = true;
       await _clearSavedPosition(_currentMediaId!);
@@ -2532,12 +3522,20 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _finalizePlaySession() async {
     _playChargeTimer?.cancel();
     if (_sessionActive) {
-      final hadProgress =
-          (_controller?.value.position ?? Duration.zero) > Duration.zero;
-      if (hadProgress && !_sessionCharged && _currentMediaId != null) {
+      final pos = _controller?.value.position ?? Duration.zero;
+      final dur = _controller?.value.duration ?? Duration.zero;
+      final name = _currentMediaId;
+      final preview = name != null
+          ? _freePreviewFor(name)
+          : const Duration(seconds: 5);
+      final meetsThreshold =
+          pos >= preview ||
+          (dur > Duration.zero &&
+              pos >= dur - const Duration(milliseconds: 250));
+      if (meetsThreshold && !_sessionCharged && _currentMediaId != null) {
         await _incrementPlaysUsed(_currentMediaId!);
         await _clearSavedPosition(_currentMediaId!);
-      } else if (!hadProgress) {
+      } else if (pos <= Duration.zero) {
         await _releasePlaylistCountersIfUnfulfilled();
       }
     }
@@ -2597,11 +3595,16 @@ class _MyHomePageState extends State<MyHomePage> {
       final name = _currentFileName;
       if (name == null) return;
       final posMs = value.position.inMilliseconds;
+      final dur = value.duration;
+      final durMs = dur.inMilliseconds;
+      final freeMs = _freePreviewFor(name).inMilliseconds;
       // Mark playlist reservation fulfilled on first forward progress
-      if (_playlistCountersReserved &&
-          !_playlistReservationFulfilled &&
-          posMs > 0) {
-        _playlistReservationFulfilled = true;
+      if (_playlistCountersReserved && !_playlistReservationFulfilled) {
+        final reachedThreshold =
+            posMs >= freeMs || (dur > Duration.zero && posMs >= durMs - 250);
+        if (reachedThreshold) {
+          _playlistReservationFulfilled = true;
+        }
       }
       // Persist position roughly every second of forward progress
       if (posMs - _lastSavedPosMs >= 1000) {
@@ -2609,7 +3612,6 @@ class _MyHomePageState extends State<MyHomePage> {
         await _savePosition(name, posMs);
       }
       // Natural end detection: if at/near end and not yet charged for this session
-      final dur = value.duration;
       if (dur > Duration.zero) {
         final nearEnd =
             value.position >= dur - const Duration(milliseconds: 250);
@@ -2630,6 +3632,260 @@ class _MyHomePageState extends State<MyHomePage> {
     } catch (_) {
       // ignore cleanup errors
     }
+  }
+
+  // ===== Conservative tar helpers (no full in-memory decode) =====
+  Future<Uint8List?> _readTarEntryBytes(
+    String tarPath,
+    bool Function(String name) match,
+  ) async {
+    RandomAccessFile? raf;
+    try {
+      raf = await File(tarPath).open();
+      while (true) {
+        final header = await raf.read(512);
+        if (header.isEmpty) break;
+        final allZero = header.every((b) => b == 0);
+        if (allZero) break; // end of archive
+
+        String fieldToString(Uint8List bytes) {
+          // Trim at first null and whitespace
+          int end = bytes.length;
+          for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] == 0) {
+              end = i;
+              break;
+            }
+          }
+          return ascii.decode(bytes.sublist(0, end)).trim();
+        }
+
+        final name = fieldToString(Uint8List.fromList(header.sublist(0, 100)));
+        final sizeStr = fieldToString(
+          Uint8List.fromList(header.sublist(124, 136)),
+        );
+        final typeflag = header[156];
+
+        int size = 0;
+        try {
+          final cleaned = sizeStr.replaceAll(RegExp(r'[^0-7]'), '');
+          if (cleaned.isNotEmpty) {
+            size = int.parse(cleaned, radix: 8);
+          }
+        } catch (_) {
+          size = 0;
+        }
+
+        final isFile = (typeflag == 0x30 /* '0' */ ) || (typeflag == 0);
+        final blocks = (size + 511) ~/ 512;
+
+        bool nameMatches(String n) {
+          if (match(n)) return true;
+          // Also try without leading './'
+          if (n.startsWith('./') && match(n.substring(2))) return true;
+          return false;
+        }
+
+        if (isFile) {
+          if (nameMatches(name)) {
+            // Read content bytes into memory (config is small)
+            final out = BytesBuilder(copy: false);
+            int remaining = size;
+            const chunk = 64 * 1024;
+            while (remaining > 0) {
+              final toRead = remaining > chunk ? chunk : remaining;
+              final data = await raf.read(toRead);
+              if (data.isEmpty) break;
+              out.add(data);
+              remaining -= data.length;
+            }
+            // Skip padding
+            final padding = (512 - (size % 512)) % 512;
+            if (padding > 0) {
+              await raf.read(padding);
+            }
+            return out.takeBytes();
+          } else {
+            // Skip file content + padding
+            final skipBytes = blocks * 512;
+            final currentPos = await raf.position();
+            await raf.setPosition(currentPos + skipBytes);
+          }
+        } else {
+          // Directory or other entry, no content; continue
+        }
+      }
+    } catch (_) {
+      return null;
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _extractTarEntries(
+    String tarPath,
+    Set<String> entryNames,
+    String destRoot, {
+    void Function(int wrote, int totalBytes, String currentName)? onProgress,
+    bool Function()? isCancelled,
+    int totalBytes = 0,
+  }) async {
+    if (entryNames.isEmpty) return;
+    // Normalize names to also accept without leading './'
+    final targets = <String>{...entryNames};
+    for (final n in entryNames) {
+      if (!n.startsWith('./')) targets.add('./$n');
+    }
+    RandomAccessFile? raf;
+    try {
+      raf = await File(tarPath).open();
+      while (true) {
+        if (isCancelled?.call() == true) {
+          throw StateError('cancelled');
+        }
+        final header = await raf.read(512);
+        if (header.isEmpty) break;
+        final allZero = header.every((b) => b == 0);
+        if (allZero) break;
+
+        String fieldToString(Uint8List bytes) {
+          int end = bytes.length;
+          for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] == 0) {
+              end = i;
+              break;
+            }
+          }
+          return ascii.decode(bytes.sublist(0, end)).trim();
+        }
+
+        final name = fieldToString(Uint8List.fromList(header.sublist(0, 100)));
+        final sizeStr = fieldToString(
+          Uint8List.fromList(header.sublist(124, 136)),
+        );
+        final typeflag = header[156];
+
+        int size = 0;
+        try {
+          final cleaned = sizeStr.replaceAll(RegExp(r'[^0-7]'), '');
+          if (cleaned.isNotEmpty) size = int.parse(cleaned, radix: 8);
+        } catch (_) {
+          size = 0;
+        }
+        final blocks = (size + 511) ~/ 512;
+        final isFile = (typeflag == 0x30 /* '0' */ ) || (typeflag == 0);
+
+        bool shouldExtract(String n) => targets.contains(n);
+
+        if (isFile && shouldExtract(name)) {
+          final outPath = '$destRoot/$name';
+          final parent = Directory(File(outPath).parent.path);
+          if (!await parent.exists()) {
+            await parent.create(recursive: true);
+          }
+          final outFile = await File(outPath).open(mode: FileMode.write);
+          try {
+            int remaining = size;
+            const chunk = 128 * 1024;
+            while (remaining > 0) {
+              if (isCancelled?.call() == true) {
+                throw StateError('cancelled');
+              }
+              final toRead = remaining > chunk ? chunk : remaining;
+              final data = await raf.read(toRead);
+              if (data.isEmpty) break;
+              try {
+                await outFile.writeFrom(data);
+              } on FileSystemException catch (fe) {
+                if (fe.osError?.errorCode == 28 ||
+                    '${fe.osError}'.toLowerCase().contains('no space')) {
+                  rethrow;
+                }
+                rethrow;
+              }
+              remaining -= data.length;
+              if (onProgress != null) {
+                onProgress(data.length, totalBytes, name);
+              }
+            }
+          } finally {
+            await outFile.close();
+          }
+          // Skip padding
+          final padding = (512 - (size % 512)) % 512;
+          if (padding > 0) {
+            await raf.read(padding);
+          }
+        } else {
+          // Skip content for non-target entries
+          final skipBytes = blocks * 512;
+          final current = await raf.position();
+          await raf.setPosition(current + skipBytes);
+        }
+      }
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
+    }
+  }
+
+  Future<int> _estimateTarEntriesSize(
+    String tarPath,
+    Set<String> entryNames,
+  ) async {
+    if (entryNames.isEmpty) return 0;
+    final targets = <String>{...entryNames};
+    for (final n in entryNames) {
+      if (!n.startsWith('./')) targets.add('./$n');
+    }
+    RandomAccessFile? raf;
+    int total = 0;
+    try {
+      raf = await File(tarPath).open();
+      while (true) {
+        final header = await raf.read(512);
+        if (header.isEmpty) break;
+        final allZero = header.every((b) => b == 0);
+        if (allZero) break;
+
+        int end = 100;
+        for (int i = 0; i < 100; i++) {
+          if (header[i] == 0) {
+            end = i;
+            break;
+          }
+        }
+        final name = ascii.decode(header.sublist(0, end)).trim();
+        int end2 = 136;
+        for (int i = 124; i < 136; i++) {
+          if (header[i] == 0) {
+            end2 = i;
+            break;
+          }
+        }
+        final sizeStr = ascii.decode(header.sublist(124, end2)).trim();
+        int size = 0;
+        try {
+          final cleaned = sizeStr.replaceAll(RegExp(r'[^0-7]'), '');
+          if (cleaned.isNotEmpty) size = int.parse(cleaned, radix: 8);
+        } catch (_) {}
+        final blocks = (size + 511) ~/ 512;
+        if (targets.contains(name)) {
+          total += size;
+        }
+        final current = await raf.position();
+        await raf.setPosition(current + blocks * 512);
+      }
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
+    }
+    return total;
   }
 
   // Legacy duration formatter removed in favor of localized _fmtDur
@@ -2683,6 +3939,22 @@ class _MyHomePageState extends State<MyHomePage> {
     final loc = (_myAppKey.currentState?._locale);
     String t(String k) =>
         L10n.t(k, loc, _myAppKey.currentState?._custom ?? const {});
+    // Auto-enter fullscreen if user rotates device to landscape while a video is selected
+    try {
+      final ori = MediaQuery.of(context).orientation;
+      final isLandscape = ori == Orientation.landscape;
+      if (isLandscape &&
+          _isCurrentVideo &&
+          _controller?.value.isInitialized == true &&
+          !_inFullscreen &&
+          _autoFullscreenOnRotate) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_inFullscreen) return;
+          _goFullscreen();
+        });
+      }
+    } catch (_) {}
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -2711,6 +3983,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 MaterialPageRoute(builder: (_) => const LanguageSettingsPage()),
               );
               // After changing language, relocalize initial status if shown
+              await _loadAutoFullscreenPref();
               setState(() {
                 _relocalizeStatusIfInitial();
               });
@@ -2753,6 +4026,33 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 8),
             Center(child: Text(_status)),
+            if (_importInProgress) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    LinearProgressIndicator(
+                      value: _importProgress > 0 && _importProgress <= 1.0
+                          ? _importProgress
+                          : null,
+                    ),
+                    if (_importLabel != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _importLabel!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
             if (_bundleConfig != null) ...[
               const SizedBox(height: 4),
               Center(
@@ -2934,6 +4234,91 @@ class _MyHomePageState extends State<MyHomePage> {
                                   await _attemptAutoPlay(); // Will set proper error message
                                   return;
                                 }
+                                if (!mounted) return;
+                                final name = _currentMediaId;
+                                if (name == null) return;
+                                final info = await _getPlayInfo(name);
+                                if (!mounted) return;
+                                final previewSec = _freePreviewFor(
+                                  name,
+                                ).inSeconds;
+                                final windowLeft = (info.max == null)
+                                    ? null
+                                    : (info.max! - info.used).clamp(
+                                        0,
+                                        info.max!,
+                                      );
+                                final lifetimeLeft = (info.maxTotal == null)
+                                    ? null
+                                    : (info.maxTotal! - info.totalPlays!).clamp(
+                                        0,
+                                        info.maxTotal!,
+                                      );
+                                // ignore: use_build_context_synchronously
+                                final confirmed =
+                                    await showDialog<bool>(
+                                      // ignore: use_build_context_synchronously
+                                      context: context,
+                                      builder: (ctx) {
+                                        String line1;
+                                        if (windowLeft != null &&
+                                            info.max != null) {
+                                          line1 = _t('confirm_window_left', {
+                                            'left': '$windowLeft',
+                                            'max': '${info.max!}',
+                                          });
+                                        } else {
+                                          line1 = _t(
+                                            'confirm_window_unlimited',
+                                          );
+                                        }
+                                        String line2;
+                                        if (lifetimeLeft != null &&
+                                            info.maxTotal != null) {
+                                          line2 = _t('confirm_lifetime_left', {
+                                            'left': '$lifetimeLeft',
+                                            'max': '${info.maxTotal!}',
+                                          });
+                                        } else {
+                                          line2 = _t(
+                                            'confirm_lifetime_unlimited',
+                                          );
+                                        }
+                                        final line3 = _t(
+                                          'confirm_preview_free',
+                                          {'seconds': '$previewSec'},
+                                        );
+                                        return AlertDialog(
+                                          title: Text(_t('confirm_play_title')),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(line1),
+                                              const SizedBox(height: 4),
+                                              Text(line2),
+                                              const SizedBox(height: 8),
+                                              Text(line3),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
+                                              child: Text(_t('cancel')),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
+                                              child: Text(_t('start_playback')),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ) ??
+                                    false;
+                                if (!confirmed) return;
                                 _startPlaySession();
                                 _controller!.play();
                                 setState(() {});
@@ -2955,6 +4340,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                 setState(() {});
                               },
                             ),
+                            if (_isCurrentVideo) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                tooltip: t('fullscreen'),
+                                icon: const Icon(Icons.fullscreen),
+                                onPressed: _goFullscreen,
+                              ),
+                            ],
                             const SizedBox(width: 12),
                             Text('${fmt(position)} / ${fmt(duration)}'),
                           ],
@@ -3029,11 +4422,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       : '';
                                   subtitle =
                                       '$left / ${info.max}${_t('ui_plays_left')}$resetStr$totalInfo';
-                                  trailing = IconButton(
-                                    icon: const Icon(Icons.play_arrow),
-                                    onPressed: () =>
-                                        _initializePlayer(file.path),
-                                  );
+                                  trailing = const SizedBox.shrink();
                                 } else {
                                   final resetStr =
                                       (info.remaining != null &&
@@ -3063,14 +4452,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               subtitle: subtitle != null
                                   ? Text(subtitle)
                                   : null,
-                              onTap: () => _initializePlayer(file.path),
-                              trailing:
-                                  trailing ??
-                                  IconButton(
-                                    icon: const Icon(Icons.play_arrow),
-                                    onPressed: () =>
-                                        _initializePlayer(file.path),
-                                  ),
+                              onTap: () =>
+                                  _initializePlayer(file.path, autoPlay: false),
+                              trailing: trailing,
                             );
                           },
                         );
@@ -3107,9 +4491,112 @@ class LanguageSettingsPage extends StatefulWidget {
   State<LanguageSettingsPage> createState() => _LanguageSettingsPageState();
 }
 
+class _FullscreenVideoPage extends StatefulWidget {
+  final VideoPlayerController controller;
+  const _FullscreenVideoPage({required this.controller});
+
+  @override
+  State<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
+  bool _exiting = false;
+  Timer? _exitTimer;
+
+  @override
+  void dispose() {
+    _exitTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.controller;
+    // If device rotates back to portrait, schedule a graceful exit.
+    try {
+      final ori = MediaQuery.of(context).orientation;
+      if (ori == Orientation.portrait && !_exiting) {
+        _exitTimer?.cancel();
+        _exitTimer = Timer(const Duration(milliseconds: 300), () {
+          if (!mounted || _exiting) return;
+          final nowOri = MediaQuery.of(context).orientation;
+          if (nowOri == Orientation.portrait) {
+            _exiting = true;
+            Navigator.of(context).maybePop();
+          }
+        });
+      } else if (ori == Orientation.landscape) {
+        // Cancel any pending exit if user rotated back to landscape quickly.
+        _exitTimer?.cancel();
+      }
+    } catch (_) {}
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: AspectRatio(
+                aspectRatio: c.value.isInitialized && c.value.aspectRatio > 0
+                    ? c.value.aspectRatio
+                    : 16 / 9,
+                child: VideoPlayer(c),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ValueListenableBuilder<VideoPlayerValue>(
+                  valueListenable: c,
+                  builder: (context, value, _) {
+                    final isPlaying = value.isPlaying;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isPlaying ? Icons.pause_circle : Icons.play_circle,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                          onPressed: () async {
+                            if (isPlaying) {
+                              await c.pause();
+                            } else {
+                              await c.play();
+                            }
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   String? _selectedCode;
   Map<String, Map<String, String>> _custom = {};
+  bool _verboseImportLogs = false;
+  String? _lastLogPath;
+  bool _autoFullscreenOnRotate = true;
 
   @override
   void initState() {
@@ -3133,6 +4620,9 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
           );
         } catch (_) {}
       }
+      _verboseImportLogs = prefs.getBool('verboseImportLogs') ?? false;
+      _lastLogPath = prefs.getString('lastImportLogPath');
+      _autoFullscreenOnRotate = prefs.getBool('autoFullscreenOnRotate') ?? true;
     });
   }
 
@@ -3266,6 +4756,84 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 ),
               ],
             ),
+          ),
+          const Divider(height: 24),
+          // Diagnostics section
+          ListTile(
+            title: Text(t('import_diagnostics')),
+            subtitle: Text(t('import_diagnostics_subtitle')),
+          ),
+          // Playback behavior section
+          SwitchListTile(
+            title: Text(t('auto_fullscreen_on_rotate')),
+            subtitle: Text(t('auto_fullscreen_on_rotate_desc')),
+            value: _autoFullscreenOnRotate,
+            onChanged: (v) async {
+              setState(() => _autoFullscreenOnRotate = v);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('autoFullscreenOnRotate', v);
+            },
+          ),
+          SwitchListTile(
+            title: Text(t('verbose_import_logs')),
+            value: _verboseImportLogs,
+            onChanged: (v) async {
+              setState(() => _verboseImportLogs = v);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('verboseImportLogs', v);
+            },
+          ),
+          ListTile(
+            title: Text(t('view_last_import_log')),
+            subtitle: Text(_lastLogPath ?? '-'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              if (_lastLogPath == null) return;
+              try {
+                final f = File(_lastLogPath!);
+                if (!await f.exists()) return;
+                final txt = await f.readAsString();
+                if (!context.mounted) return;
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(t('last_import_log')),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: SingleChildScrollView(child: SelectableText(txt)),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: txt));
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Text(t('copy')),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text(t('close')),
+                      ),
+                    ],
+                  ),
+                );
+              } catch (_) {}
+            },
+          ),
+          ListTile(
+            title: Text(t('clear_logs')),
+            onTap: () async {
+              try {
+                final docs = await getApplicationDocumentsDirectory();
+                final dir = Directory('${docs.path}/logs');
+                if (await dir.exists()) {
+                  await dir.delete(recursive: true);
+                }
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('lastImportLogPath');
+                setState(() => _lastLogPath = null);
+              } catch (_) {}
+            },
           ),
         ],
       ),

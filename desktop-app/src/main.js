@@ -64,10 +64,15 @@ ipcMain.handle('select-media-files', async () => {
   return result.filePaths;
 });
 
-ipcMain.handle('select-output-directory', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
+ipcMain.handle('select-output-directory', async (event, opts) => {
+  const defaultPath = opts && typeof opts === 'object' ? opts.defaultPath : undefined;
+  const dialogOptions = {
     properties: ['openDirectory', 'createDirectory']
-  });
+  };
+  if (defaultPath && typeof defaultPath === 'string') {
+    dialogOptions.defaultPath = defaultPath;
+  }
+  const result = await dialog.showOpenDialog(mainWindow, dialogOptions);
 
   if (result.canceled) {
     return null;
@@ -82,7 +87,7 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
     
     // Generate bundle ID and secure bundle key
     const bundleId = `bundle_${name.replace(/\s+/g, '_')}_${Date.now()}`;
-    const bundleKey = crypto.randomBytes(32).toString('hex'); // Random key for bundle encryption
+  const bundleKey = crypto.randomBytes(32).toString('hex'); // Random key for bundle encryption
     
     // Create temporary bundle directory
     const tempDir = path.join(require('os').tmpdir(), bundleId);
@@ -92,12 +97,12 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
     const mediaDir = path.join(tempDir, 'media');
     await fs.mkdir(mediaDir, { recursive: true });
 
-    // Process and encrypt media files
+  // Process and protect media files (lightweight obfuscation to reduce device CPU/memory)
     const processedMediaFiles = [];
     
     const supportedVideo = /\.(mp4)$/i;
     const supportedAudio = /\.(mp3|m4a|wav)$/i;
-    for (const mediaFile of mediaFiles) {
+  for (const mediaFile of mediaFiles) {
       try {
         const mediaId = uuidv4();
         const fileExt = path.extname(mediaFile.path);
@@ -105,22 +110,42 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
         if (!supportedVideo.test(lowerExt) && !supportedAudio.test(lowerExt)) {
           throw new Error(`Unsupported media type for Android: ${fileExt}. Supported: .mp4 (H.264/AAC), .mp3, .m4a, .wav`);
         }
-  const encryptedFileName = `${mediaId}${fileExt}.enc`;
-        const encryptedPath = path.join(mediaDir, encryptedFileName);
-        
-        // Read media file
-        const fileData = await fs.readFile(mediaFile.path);
-        const base64Data = fileData.toString('base64');
-        
-        // Encrypt with a device-specific key derived from the first device ID
-        const deviceKey = generateDeviceKey(deviceIds[0], 'scripture-media-app-2024');
-        const encryptedData = encrypt(base64Data, deviceKey);
-        
-        // Write encrypted file
-        await fs.writeFile(encryptedPath, encryptedData, 'utf8');
-        
-        // Calculate file checksum for verification
-        const checksum = crypto.createHash('sha256').update(fileData).digest('hex');
+  const encryptedFileName = `${mediaId}${fileExt}.obf`;
+  const encryptedPath = path.join(mediaDir, encryptedFileName);
+
+        // Stream obfuscation: XOR-based keystream (not cryptographically secure)
+        // to make files non-playable outside our app with minimal device cost.
+        const keyBytes = Buffer.from(bundleKey, 'hex');
+        const salt = crypto.randomBytes(8); // per-file salt
+        // Stream, obfuscate, and compute checksum of original content in a single pass
+        const checksumHasher = crypto.createHash('sha256');
+        await new Promise((resolve, reject) => {
+          const rs = require('fs').createReadStream(mediaFile.path);
+          const ws = require('fs').createWriteStream(encryptedPath);
+          let offset = 0;
+          rs.on('data', (chunk) => {
+            // Update checksum with original bytes
+            checksumHasher.update(chunk);
+            // Obfuscate chunk
+            const out = Buffer.allocUnsafe(chunk.length);
+            for (let i = 0; i < chunk.length; i++) {
+              const pos = offset + i;
+              const k = keyBytes[pos % keyBytes.length];
+              const s = salt[pos % salt.length];
+              const mask = (k ^ s ^ ((pos * 31) & 0xff)) & 0xff;
+              out[i] = chunk[i] ^ mask;
+            }
+            ws.write(out);
+            offset += chunk.length;
+          });
+          rs.on('error', reject);
+          ws.on('error', reject);
+          rs.on('end', () => ws.end());
+          ws.on('finish', resolve);
+        });
+
+        // Calculate checksum (of original content) for verification
+        const checksum = checksumHasher.digest('hex');
         
         processedMediaFiles.push({
           id: mediaId,
@@ -128,6 +153,7 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
           title: mediaFile.title || path.basename(mediaFile.path, fileExt),
           type: mediaFile.type || (supportedVideo.test(lowerExt) ? 'video' : 'audio'),
           encryptedPath: `media/${encryptedFileName}`,
+          protection: { scheme: 'xor-v1', salt: salt.toString('base64') },
           checksum: checksum,
           playbackLimit: mediaFile.playbackLimit || playbackLimits.default
         });
@@ -135,6 +161,13 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
         console.error(`Failed to process media file ${mediaFile.path}:`, error);
         throw error;
       }
+    }
+
+    // Build per-device wrapped keys: deviceId -> AES(passphrase) ciphertext
+    const bundleKeyEncryptedForDevices = {};
+    for (const id of deviceIds) {
+      const deviceKey = generateDeviceKey(id, 'scripture-media-app-2024');
+      bundleKeyEncryptedForDevices[id] = encrypt(bundleKey, deviceKey);
     }
 
     // Create bundle configuration
@@ -145,7 +178,7 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
       playbackLimits,
       playlistLimits,
       expirationDate,
-      bundleKey: bundleKey, // Include bundle key for verification
+      bundleKeyEncryptedForDevices,
       integrity: crypto.createHash('sha256').update(JSON.stringify({
         bundleId,
         allowedDeviceIds: deviceIds,
@@ -166,6 +199,11 @@ ipcMain.handle('create-bundle', async (event, bundleData) => {
 
     // Create README with updated instructions
     const readmePath = path.join(tempDir, 'README.txt');
+    // Derive human-friendly reset interval (hours) if provided in ms
+    const resetMs = playbackLimits && playbackLimits.default && typeof playbackLimits.default.resetIntervalMs === 'number'
+      ? playbackLimits.default.resetIntervalMs
+      : null;
+    const resetHours = resetMs != null ? Math.round(resetMs / (60 * 60 * 1000)) : 'N/A';
     const readmeContent = `Scripture Media Bundle
 ======================
 
@@ -177,7 +215,7 @@ Media Files: ${processedMediaFiles.length}
 
 Playback Limits:
 - Max plays per file: ${playbackLimits.default.maxPlays}
-- Reset interval: ${playbackLimits.default.resetIntervalHours} hours
+- Reset interval: ${resetHours} hours
 
 To use this bundle:
 1. Transfer the entire .smbundle file to the mobile device
@@ -185,10 +223,11 @@ To use this bundle:
 3. The app will verify device authorization before allowing access
 
 SECURITY NOTICE:
-- This bundle is encrypted and compressed
-- The configuration is encrypted with device-specific keys
+- This bundle is protected and compressed
+- Media is protected with a per-bundle key that is wrapped for each authorized device
+- The configuration is encrypted with a shared key between desktop and mobile
 - Tampering with the bundle will prevent it from working
-- Only authorized devices can decrypt and use this content
+- Only authorized devices can unwrap the content key and use this content
 
 Note: This bundle can only be accessed by specifically authorized devices.
 Do not attempt to modify the bundle file as it will become unusable.
@@ -198,7 +237,7 @@ Do not attempt to modify the bundle file as it will become unusable.
     // Create bundle manifest for integrity checking
     const manifestPath = path.join(tempDir, 'manifest.json');
     const manifest = {
-      version: '2.0',
+      version: '2.2',
       bundleId,
       created: new Date().toISOString(),
       files: processedMediaFiles.length,
@@ -214,9 +253,14 @@ Do not attempt to modify the bundle file as it will become unusable.
     // Create tar.gz archive
     await tar.create(
       {
-        gzip: true,
+        // Use a compatible ustar format to avoid PAX headers and keep filenames ASCII-safe
+        format: 'ustar',
+        portable: true,
+        // Choose a moderate gzip level to reduce on-device CPU for decompression
+        gzip: { level: 6 },
         file: archivePath,
-        cwd: tempDir
+        cwd: tempDir,
+        noMtime: true,
       },
       ['.'] // Include all files in temp directory
     );

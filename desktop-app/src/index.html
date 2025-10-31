@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scripture Media Bundler</title>
+  <title data-i18n="app_title">Scripture Media Bundler</title>
   <style>
     * {
       margin: 0;
@@ -266,170 +266,205 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Scripture Media Bundler</h1>
-      <p>Create secure media bundles for authorized devices</p>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div>
+          <h1 data-i18n="app_title">Scripture Media Bundler</h1>
+          <p data-i18n="app_subtitle">Create secure media bundles for authorized devices</p>
+        </div>
+        <div>
+          <label for="lang-select" style="display:block; font-size:12px; opacity:0.9; margin-bottom:4px;" data-i18n="language_settings_title">Language</label>
+          <select id="lang-select" class="button button-secondary" style="padding:6px 10px;">
+            <option value="system" data-i18n="system_default">System default</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="nl">Nederlands</option>
+            <option value="af">Afrikaans</option>
+            <option value="de">Deutsch</option>
+            <option value="pt">Português</option>
+            <option value="id">Bahasa Indonesia</option>
+            <option value="ru">Русский</option>
+            <option value="hi">हिन्दी</option>
+            <option value="ar">العربية</option>
+            <option value="zh">中文</option>
+            <option value="tpi">Tok Pisin</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <div class="content">
       <div id="message-container"></div>
 
       <div class="section">
-        <div class="section-title">Bundle Configuration</div>
+        <div class="section-title" data-i18n="section_bundle_config">Bundle Configuration</div>
         
         <div class="form-group">
-          <label for="bundle-name">Bundle Name *</label>
-          <input type="text" id="bundle-name" placeholder="e.g., Luke_Gospel_Trial" required>
+          <label for="bundle-name" data-i18n="label_bundle_name">Bundle Name *</label>
+          <input type="text" id="bundle-name" data-i18n-placeholder="placeholder_bundle_name" placeholder="e.g., Luke_Gospel_Trial" required>
         </div>
 
         <div class="form-group">
-          <label for="device-ids">Authorized Device IDs * (one per line)</label>
-          <textarea id="device-ids" placeholder="Enter device IDs, one per line" required></textarea>
+          <label for="device-ids" data-i18n="label_device_ids">Authorized Device IDs * (one per line)</label>
+          <textarea id="device-ids" data-i18n-placeholder="placeholder_device_ids" placeholder="Enter device IDs, one per line" required></textarea>
           <div id="device-ids-display" class="device-ids"></div>
         </div>
       </div>
 
       <div class="section">
-        <div class="section-title">Playback Limits</div>
+        <div class="section-title" data-i18n="section_playback_limits">Playback Limits</div>
         
         <div class="form-group">
-          <label for="max-plays">Maximum Plays per Reset Period *</label>
+          <label for="max-plays" data-i18n="label_max_plays">Maximum Plays per Reset Period *</label>
           <input type="number" id="max-plays" value="3" min="1" required>
-          <small style="color: #666;">Number of times media can be played before waiting for reset</small>
+          <small style="color: #666;" data-i18n="help_max_plays">Number of times media can be played before waiting for reset</small>
         </div>
 
         <div class="form-group">
-          <label>Reset Interval *</label>
+          <label for="free-preview-seconds" data-i18n="label_free_preview">Free Preview Seconds</label>
+          <input type="number" id="free-preview-seconds" value="5" min="0">
+          <small style="color: #666;" data-i18n="help_free_preview">How many seconds users can play before a play is charged (0 to disable)</small>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="label_reset_interval">Reset Interval *</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
             <div>
-              <input type="number" id="reset-days" value="0" min="0" placeholder="Days">
-              <small style="display: block; color: #666;">Days</small>
+              <input type="number" id="reset-days" value="0" min="0" data-i18n-placeholder="label_days" placeholder="Days">
+              <small style="display: block; color: #666;" data-i18n="label_days">Days</small>
             </div>
             <div>
-              <input type="number" id="reset-hours" value="24" min="0" placeholder="Hours">
-              <small style="display: block; color: #666;">Hours</small>
+              <input type="number" id="reset-hours" value="24" min="0" data-i18n-placeholder="label_hours" placeholder="Hours">
+              <small style="display: block; color: #666;" data-i18n="label_hours">Hours</small>
             </div>
             <div>
-              <input type="number" id="reset-minutes" value="0" min="0" placeholder="Minutes">
-              <small style="display: block; color: #666;">Minutes</small>
+              <input type="number" id="reset-minutes" value="0" min="0" data-i18n-placeholder="label_minutes" placeholder="Minutes">
+              <small style="display: block; color: #666;" data-i18n="label_minutes">Minutes</small>
             </div>
           </div>
         </div>
 
         <div class="form-group">
-          <label>Minimum Interval Between Plays (Optional)</label>
+          <label data-i18n="label_min_interval_between_plays">Minimum Interval Between Plays (Optional)</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
             <div>
-              <input type="number" id="interval-days" value="0" min="0" placeholder="Days">
-              <small style="display: block; color: #666;">Days</small>
+              <input type="number" id="interval-days" value="0" min="0" data-i18n-placeholder="label_days" placeholder="Days">
+              <small style="display: block; color: #666;" data-i18n="label_days">Days</small>
             </div>
             <div>
-              <input type="number" id="interval-hours" value="0" min="0" placeholder="Hours">
-              <small style="display: block; color: #666;">Hours</small>
+              <input type="number" id="interval-hours" value="0" min="0" data-i18n-placeholder="label_hours" placeholder="Hours">
+              <small style="display: block; color: #666;" data-i18n="label_hours">Hours</small>
             </div>
             <div>
-              <input type="number" id="interval-minutes" value="0" min="0" placeholder="Minutes">
-              <small style="display: block; color: #666;">Minutes</small>
+              <input type="number" id="interval-minutes" value="0" min="0" data-i18n-placeholder="label_minutes" placeholder="Minutes">
+              <small style="display: block; color: #666;" data-i18n="label_minutes">Minutes</small>
             </div>
           </div>
-          <small style="color: #666;">Required waiting time between each play (leave at 0 for no minimum)</small>
+          <small style="color: #666;" data-i18n="help_min_interval_between_plays">Required waiting time between each play (leave at 0 for no minimum)</small>
         </div>
 
         <div class="form-group">
-          <label for="max-plays-total">Maximum Total Plays Ever (Optional)</label>
-          <input type="number" id="max-plays-total" value="" min="1" placeholder="Leave empty for no limit">
-          <small style="color: #666;">Absolute lifetime limit - media becomes permanently locked after this many plays</small>
+          <label for="max-plays-total" data-i18n="label_max_plays_total">Maximum Total Plays Ever (Optional)</label>
+          <input type="number" id="max-plays-total" value="" min="1" data-i18n-placeholder="placeholder_no_limit" placeholder="Leave empty for no limit">
+          <small style="color: #666;" data-i18n="help_max_plays_total">Absolute lifetime limit - media becomes permanently locked after this many plays</small>
         </div>
 
         <div class="form-group">
-          <label for="expiration-date">Bundle Expiration Date & Time (Optional)</label>
+          <label for="expiration-date" data-i18n="label_expiration">Bundle Expiration Date & Time (Optional)</label>
           <input type="datetime-local" id="expiration-date">
-          <small style="color: #666;">Bundle becomes permanently locked after this date/time</small>
+          <small style="color: #666;" data-i18n="help_expiration">Bundle becomes permanently locked after this date/time</small>
         </div>
       </div>
 
       <div class="section">
-        <div class="section-title">Playlist-Level Limits (Optional)</div>
-        <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+        <div class="section-title" data-i18n="section_playlist_limits">Playlist-Level Limits (Optional)</div>
+        <p style="margin-bottom: 15px; color: #666; font-size: 14px;" data-i18n="paragraph_playlist_limits">
           These limits apply to the entire playlist, controlling overall usage across all files.
         </p>
         
         <div class="form-group">
-          <label for="playlist-max-items-session">Max Items Per Session (Optional)</label>
-          <input type="number" id="playlist-max-items-session" value="" min="1" placeholder="Leave empty for no limit">
-          <small style="color: #666;">Maximum number of unique files that can be played within a session</small>
+          <label for="playlist-max-items-session" data-i18n="label_playlist_max_items_session">Max Items Per Session (Optional)</label>
+          <input type="number" id="playlist-max-items-session" value="" min="1" data-i18n-placeholder="placeholder_no_limit" placeholder="Leave empty for no limit">
+          <small style="color: #666;" data-i18n="help_playlist_max_items_session">Maximum number of unique files that can be played within a session</small>
         </div>
 
         <div class="form-group">
-          <label>Session Reset Interval (Optional)</label>
+          <label data-i18n="label_session_reset_interval">Session Reset Interval (Optional)</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
             <div>
-              <input type="number" id="session-reset-days" value="0" min="0" placeholder="Days">
-              <small style="display: block; color: #666;">Days</small>
+              <input type="number" id="session-reset-days" value="0" min="0" data-i18n-placeholder="label_days" placeholder="Days">
+              <small style="display: block; color: #666;" data-i18n="label_days">Days</small>
             </div>
             <div>
-              <input type="number" id="session-reset-hours" value="0" min="0" placeholder="Hours">
-              <small style="display: block; color: #666;">Hours</small>
+              <input type="number" id="session-reset-hours" value="0" min="0" data-i18n-placeholder="label_hours" placeholder="Hours">
+              <small style="display: block; color: #666;" data-i18n="label_hours">Hours</small>
             </div>
             <div>
-              <input type="number" id="session-reset-minutes" value="0" min="0" placeholder="Minutes">
-              <small style="display: block; color: #666;">Minutes</small>
+              <input type="number" id="session-reset-minutes" value="0" min="0" data-i18n-placeholder="label_minutes" placeholder="Minutes">
+              <small style="display: block; color: #666;" data-i18n="label_minutes">Minutes</small>
             </div>
           </div>
-          <small style="color: #666;">How long until the session resets and users can play new items (leave at 0 for no reset)</small>
+          <small style="color: #666;" data-i18n="help_playlist_session_reset">How long until the session resets and users can play new items (leave at 0 for no reset)</small>
         </div>
 
         <div class="form-group">
-          <label>Minimum Interval Between Items (Optional)</label>
+          <label data-i18n="label_playlist_min_interval_between_items">Minimum Interval Between Items (Optional)</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
             <div>
-              <input type="number" id="playlist-interval-days" value="0" min="0" placeholder="Days">
-              <small style="display: block; color: #666;">Days</small>
+              <input type="number" id="playlist-interval-days" value="0" min="0" data-i18n-placeholder="label_days" placeholder="Days">
+              <small style="display: block; color: #666;" data-i18n="label_days">Days</small>
             </div>
             <div>
-              <input type="number" id="playlist-interval-hours" value="0" min="0" placeholder="Hours">
-              <small style="display: block; color: #666;">Hours</small>
+              <input type="number" id="playlist-interval-hours" value="0" min="0" data-i18n-placeholder="label_hours" placeholder="Hours">
+              <small style="display: block; color: #666;" data-i18n="label_hours">Hours</small>
             </div>
             <div>
-              <input type="number" id="playlist-interval-minutes" value="0" min="0" placeholder="Minutes">
-              <small style="display: block; color: #666;">Minutes</small>
+              <input type="number" id="playlist-interval-minutes" value="0" min="0" data-i18n-placeholder="label_minutes" placeholder="Minutes">
+              <small style="display: block; color: #666;" data-i18n="label_minutes">Minutes</small>
             </div>
           </div>
-          <small style="color: #666;">Required waiting time between playing different files (leave at 0 for no minimum)</small>
+          <small style="color: #666;" data-i18n="help_playlist_min_interval_between_items">Required waiting time between playing different files (leave at 0 for no minimum)</small>
         </div>
 
         <div class="form-group">
-          <label for="playlist-max-total-items">Maximum Total Items Played Ever (Optional)</label>
-          <input type="number" id="playlist-max-total-items" value="" min="1" placeholder="Leave empty for no limit">
-          <small style="color: #666;">Absolute lifetime limit on unique files - playlist becomes permanently locked after this many unique files are played</small>
+          <label for="playlist-max-total-items" data-i18n="label_playlist_max_total_items">Maximum Total Items Played Ever (Optional)</label>
+          <input type="number" id="playlist-max-total-items" value="" min="1" data-i18n-placeholder="placeholder_no_limit" placeholder="Leave empty for no limit">
+          <small style="color: #666;" data-i18n="help_playlist_max_total_items">Absolute lifetime limit on unique files - playlist becomes permanently locked after this many unique files are played</small>
         </div>
 
         <div class="form-group">
-          <label for="playlist-expiration-date">Playlist Expiration Date & Time (Optional)</label>
+          <label for="playlist-expiration-date" data-i18n="label_playlist_expiration">Playlist Expiration Date & Time (Optional)</label>
           <input type="datetime-local" id="playlist-expiration-date">
-          <small style="color: #666;">Playlist becomes permanently locked after this date/time (can differ from bundle expiration)</small>
+          <small style="color: #666;" data-i18n="help_playlist_expiration">Playlist becomes permanently locked after this date/time (can differ from bundle expiration)</small>
         </div>
       </div>
 
       <div class="section">
-        <div class="section-title">Media Files</div>
+  <div class="section-title" data-i18n="section_media_files">Media Files</div>
         
-        <button class="button button-secondary" id="add-media-button">
+        <button class="button button-secondary" id="add-media-button" data-i18n="button_add_media">
           Add Media Files
         </button>
 
         <div id="media-list" class="media-list">
-          <div class="empty-state">No media files added yet</div>
+          <div class="empty-state" data-i18n="empty_no_media">No media files added yet</div>
         </div>
       </div>
 
       <div class="loading" id="loading">
         <div class="spinner"></div>
-        <p>Creating bundle...</p>
+  <p data-i18n="loading_creating_bundle">Creating bundle...</p>
       </div>
 
       <div class="action-buttons">
-        <button class="button button-primary" id="create-bundle-button">
+        <button class="button button-primary" id="create-bundle-button" data-i18n="button_create_bundle">
           Create Bundle
+        </button>
+        <button class="button button-secondary" id="reset-settings-button" data-i18n="button_reset_settings" data-i18n-title="tooltip_reset_settings" title="Reset all settings to defaults">
+          Reset Settings
+        </button>
+        <button class="button button-secondary" id="reset-form-button" data-i18n="button_reset_form" data-i18n-title="tooltip_reset_form" title="Clear selected files and bundle name only">
+          Clear Files & Name
         </button>
       </div>
     </div>
