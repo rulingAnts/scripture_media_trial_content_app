@@ -43,14 +43,11 @@ scripture_media_trial_content_app/
 │   │   ├── renderer.js          # UI logic
 │   │   └── index.html           # User interface
 │   └── package.json
-├── mobile-app/            # React Native Android app
-│   ├── src/
-│   │   ├── DeviceBinding.js     # Device identification
-│   │   ├── SecureStorage.js     # Encrypted file management
-│   │   ├── BundleManager.js     # Bundle loading
-│   │   └── MediaPlayer.js       # Playback with limits
-│   ├── App.js
-│   └── package.json
+├── mobile_app/            # Flutter Android app
+│   ├── lib/
+│   │   └── main.dart            # Main application logic
+│   ├── android/                 # Android configuration
+│   └── pubspec.yaml
 └── package.json           # Root package with workspaces
 ```
 
@@ -59,7 +56,7 @@ scripture_media_trial_content_app/
 ### Prerequisites
 - Node.js 16.x or higher
 - npm 8.x or higher
-- For mobile development: Android Studio, JDK 11+, Android SDK
+- For mobile development: Flutter SDK, Android Studio, JDK 11+, Android SDK
 
 ### Installation
 
@@ -81,32 +78,22 @@ npm run desktop
 ### Run Mobile App (Android)
 
 ```bash
-# Terminal 1 - Start Metro bundler
-npm run mobile
+cd mobile_app
+flutter pub get
+flutter run
 
-# Terminal 2 - Run on Android device/emulator
-cd mobile-app
-npm run android
+# Or use the build script
+scripts/build_apk.sh
 ```
 
 ## Documentation
 
 ### Getting Started
-- **[QUICKSTART.md](QUICKSTART.md)** - Get up and running in 5-10 minutes
-- **[SETUP.md](SETUP.md)** - Complete setup and installation guide
-- **[USAGE.md](USAGE.md)** - How to use the desktop and mobile apps
-
-### Technical Documentation
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design and technical details
-- **[SECURITY.md](SECURITY.md)** - Security analysis and best practices
-
-### Reference
-- **[FAQ.md](FAQ.md)** - Frequently asked questions
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Complete setup and quick start guide
+- **[USER_GUIDE.md](USER_GUIDE.md)** - Detailed usage instructions and troubleshooting
+- **[TECHNICAL.md](TECHNICAL.md)** - Architecture, security, and implementation details
+- **[COMMUNITY.md](COMMUNITY.md)** - FAQ, contributing guidelines, and support
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
- - **[TODO.md](TODO.md)** - Roadmap and future playback‑limit options
-- **[examples/](examples/)** - Example bundle configurations
 
 ## Workflow Overview
 
@@ -130,9 +117,9 @@ npm run android
 ## Technology Stack
 
 - **Desktop App**: Electron, Node.js, vanilla JavaScript
-- **Mobile App**: React Native, Android
-- **Encryption**: AES-256 via crypto-js
-- **Storage**: File system (desktop), AsyncStorage + RNFS (mobile)
+- **Mobile App**: Flutter, Dart, Android
+- **Encryption**: AES-256 via CryptoJS (desktop), encrypt package (mobile)
+- **Storage**: File system (desktop), SharedPreferences (mobile)
 
 ## License
 
@@ -158,4 +145,4 @@ This application implements multiple security layers but is not impenetrable. Fo
 - Monitoring and auditing
 - Regular security updates
 
-See [SECURITY.md](SECURITY.md) for detailed security analysis.
+See [TECHNICAL.md#security](TECHNICAL.md#security) for detailed security analysis.

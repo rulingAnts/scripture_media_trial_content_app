@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bundle export with comprehensive README
   - Cross-platform support (Windows, macOS, Linux)
 
-- **Mobile Application** (React Native for Android)
+- **Mobile Application** (Flutter for Android)
   - Device identification and binding
   - Secure encrypted media storage
   - Bundle import and validation
@@ -94,11 +94,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IPC-based architecture
 
 #### Mobile App
-- React Native 0.72
-- react-native-device-info for device identification
-- react-native-fs for file system operations
-- react-native-video for media playback
-- AsyncStorage for local persistence
+- Flutter SDK 3.9.2+
+- Dart language
+- `encrypt`, `crypto`, `pointycastle` packages for encryption
+- `video_player` for media playback
+- `shared_preferences` for local persistence
 - Custom security modules
 
 #### Build System
