@@ -436,6 +436,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Auto fullscreen on rotate',
       'auto_fullscreen_on_rotate_desc':
           'Automatically enter fullscreen when rotating device to landscape during video playback',
+      'allow_landscape': 'Allow landscape rotation',
+      'allow_landscape_desc':
+          'Let the app rotate to landscape outside fullscreen; videos in landscape will still enter fullscreen if enabled',
     },
     'es': {
       'app_title': 'Reproductor de demostración de Escrituras',
@@ -547,6 +550,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Pantalla completa automática al girar',
       'auto_fullscreen_on_rotate_desc':
           'Entrar automáticamente en pantalla completa al girar el dispositivo a horizontal durante la reproducción de video',
+      'allow_landscape': 'Permitir rotación horizontal',
+      'allow_landscape_desc':
+          'Permitir que la app gire a horizontal fuera del modo de pantalla completa; los videos en horizontal entrarán en pantalla completa si está activado',
     },
     'fr': {
       'app_title': 'Lecteur de démo des Écritures',
@@ -650,6 +656,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Plein écran automatique à la rotation',
       'auto_fullscreen_on_rotate_desc':
           'Passer automatiquement en plein écran lors de la rotation de l’appareil en paysage pendant la lecture vidéo',
+      'allow_landscape': 'Autoriser l’orientation paysage',
+      'allow_landscape_desc':
+          'Autoriser l’app à passer en paysage hors plein écran ; les vidéos en paysage passeront en plein écran si activé',
     },
     'de': {
       'app_title': 'Schrift Demo-Player',
@@ -756,6 +765,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Automatisches Vollbild bei Drehen',
       'auto_fullscreen_on_rotate_desc':
           'Bei Drehung ins Querformat während der Videowiedergabe automatisch in den Vollbildmodus wechseln',
+      'allow_landscape': 'Querformat in der App erlauben',
+      'allow_landscape_desc':
+          'Erlaube der App, außerhalb des Vollbilds ins Querformat zu drehen; Videos im Querformat wechseln weiterhin in den Vollbildmodus (falls aktiviert)',
     },
     'nl': {
       'app_title': 'Schrift Demo-speler',
@@ -857,6 +869,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Automatisch volledig scherm bij draaien',
       'auto_fullscreen_on_rotate_desc':
           'Automatisch naar volledig scherm bij draaien naar landschap tijdens videoweergave',
+      'allow_landscape': 'Landschapstand toestaan',
+      'allow_landscape_desc':
+          'Laat de app buiten volledig scherm naar landschap draaien; video’s in landschap gaan nog steeds naar volledig scherm indien ingeschakeld',
     },
     'af': {
       'app_title': 'Skrif Demo Speler',
@@ -961,6 +976,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Outo-volskerm wanneer gedraai',
       'auto_fullscreen_on_rotate_desc':
           'Gaan outomaties na volskerm wanneer die toestel na landskap gedraai word tydens videoterugspeel',
+      'allow_landscape': 'Laat landskap-rotasie toe',
+      'allow_landscape_desc':
+          'Laat die app buite volskerm na landskap draai; video’s in landskap sal steeds volskerm ingaan indien geaktiveer',
     },
     'pt': {
       'app_title': 'Reprodutor de Demonstração das Escrituras',
@@ -1067,6 +1085,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Tela cheia automática ao girar',
       'auto_fullscreen_on_rotate_desc':
           'Entrar automaticamente em tela cheia ao girar o dispositivo para paisagem durante a reprodução de vídeo',
+      'allow_landscape': 'Permitir rotação para paisagem',
+      'allow_landscape_desc':
+          'Permitir que o app gire para paisagem fora do modo de tela cheia; vídeos em paisagem ainda entram em tela cheia se ativado',
     },
     'id': {
       'app_title': 'Pemutar Demo Kitab Suci',
@@ -1176,6 +1197,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Layar penuh otomatis saat diputar',
       'auto_fullscreen_on_rotate_desc':
           'Masuk otomatis ke layar penuh saat memutar perangkat ke mode lanskap selama pemutaran video',
+      'allow_landscape': 'Izinkan rotasi lanskap',
+      'allow_landscape_desc':
+          'Izinkan aplikasi berputar ke lanskap di luar layar penuh; video lanskap tetap masuk layar penuh jika diaktifkan',
     },
     'ru': {
       'app_title': 'Демонстрационный плеер Писания',
@@ -1281,6 +1305,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Авто полноэкранный при повороте',
       'auto_fullscreen_on_rotate_desc':
           'Автоматически переходить в полноэкранный режим при повороте устройства в ландшафтный режим во время воспроизведения видео',
+      'allow_landscape': 'Разрешить альбомную ориентацию',
+      'allow_landscape_desc':
+          'Разрешить приложению поворачиваться в альбомную ориентацию вне полноэкранного режима; видео в альбомной ориентации будут открываться на весь экран, если включено',
     },
     'hi': {
       'app_title': 'शास्त्र डेमो प्लेयर',
@@ -1384,6 +1411,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'घुमाने पर स्वतः पूर्ण स्क्रीन',
       'auto_fullscreen_on_rotate_desc':
           'वीडियो चलने के दौरान डिवाइस को लैंडस्केप घुमाने पर स्वतः पूर्ण स्क्रीन में जाएँ',
+      'allow_landscape': 'लैंडस्केप घुमाव की अनुमति दें',
+      'allow_landscape_desc':
+          'ऐप को फुल-स्क्रीन के बाहर लैंडस्केप में घूमने दें; लैंडस्केप में वीडियो सक्षम होने पर फुल-स्क्रीन में जाएंगे',
     },
     'ar': {
       'app_title': 'مشغل عرض الكتاب المقدس',
@@ -1484,6 +1514,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'ملء الشاشة تلقائيًا عند التدوير',
       'auto_fullscreen_on_rotate_desc':
           'الانتقال تلقائيًا إلى وضع ملء الشاشة عند تدوير الجهاز إلى الوضع الأفقي أثناء تشغيل الفيديو',
+      'allow_landscape': 'السماح بالوضع الأفقي',
+      'allow_landscape_desc':
+          'السماح للتطبيق بالدوران إلى الوضع الأفقي خارج ملء الشاشة؛ ستنتقل مقاطع الفيديو إلى ملء الشاشة في الوضع الأفقي إذا كان ذلك مفعّلًا',
     },
     'zh': {
       'app_title': '经文演示播放器',
@@ -1571,6 +1604,8 @@ class L10n {
       'clear_logs': '清除日志',
       'auto_fullscreen_on_rotate': '旋转时自动全屏',
       'auto_fullscreen_on_rotate_desc': '设备在视频播放时旋转到横屏将自动进入全屏',
+      'allow_landscape': '允许横屏旋转',
+      'allow_landscape_desc': '允许应用在非全屏时横屏旋转；若启用，横屏视频仍会进入全屏',
     },
     'tpi': {
       'app_title': 'Scripture Demo Pleya',
@@ -1671,6 +1706,9 @@ class L10n {
       'auto_fullscreen_on_rotate': 'Fulskrin wantaim tanim nating',
       'auto_fullscreen_on_rotate_desc':
           'Taim yu tanim telefon i go long sait long taim video i plei, em bai go long fulskrin yet',
+      'allow_landscape': 'Larim tanim i go long sait',
+      'allow_landscape_desc':
+          'Larim app i tanim i go long sait taim i no stap long fulskrin; sapos seting i stap, video long sait bai go long fulskrin yet',
     },
   };
   // Interpolation with {placeholders}
@@ -1803,6 +1841,14 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _inFullscreen = false;
   // Preference: auto-enter fullscreen on landscape rotation
   bool _autoFullscreenOnRotate = true;
+  // Throttle auto-fullscreen triggers to avoid rapid re-entry on bouncy rotations
+  DateTime? _lastFullscreenTriggerAt;
+  // If user exits fullscreen while still in landscape, suppress auto re-entry
+  // until the device returns to portrait.
+  bool _suppressAutoFullscreenUntilPortrait = false;
+  // Preference: allow landscape rotation in main UI (outside fullscreen)
+  bool _allowLandscapeInApp = false;
+  bool _initialShareHandled = false;
 
   @override
   void initState() {
@@ -1817,6 +1863,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     _loadVerbosePref();
     _loadAutoFullscreenPref();
+    _loadAllowLandscapePref();
   }
 
   Future<void> _loadVerbosePref() async {
@@ -1836,6 +1883,36 @@ class _MyHomePageState extends State<MyHomePage> {
         _autoFullscreenOnRotate =
             prefs.getBool('autoFullscreenOnRotate') ?? true;
       });
+    } catch (_) {}
+  }
+
+  Future<void> _loadAllowLandscapePref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      final allow = prefs.getBool('allowLandscapeInApp') ?? false;
+      setState(() {
+        _allowLandscapeInApp = allow;
+      });
+      // Apply default orientations based on preference
+      await _applyDefaultOrientations();
+    } catch (_) {}
+  }
+
+  Future<void> _applyDefaultOrientations() async {
+    try {
+      if (_inFullscreen) return; // fullscreen manages its own orientations
+      if (_allowLandscapeInApp) {
+        await services.SystemChrome.setPreferredOrientations(const [
+          services.DeviceOrientation.portraitUp,
+          services.DeviceOrientation.landscapeLeft,
+          services.DeviceOrientation.landscapeRight,
+        ]);
+      } else {
+        await services.SystemChrome.setPreferredOrientations(const [
+          services.DeviceOrientation.portraitUp,
+        ]);
+      }
     } catch (_) {}
   }
 
@@ -1975,7 +2052,11 @@ class _MyHomePageState extends State<MyHomePage> {
         .listen(
           (List<SharedMediaFile> value) {
             if (value.isNotEmpty) {
-              _handleSharedFile(value.first.path);
+              if (_importInProgress) return;
+              final p = value.first.path;
+              if (p.isNotEmpty) {
+                _handleSharedFile(p);
+              }
             }
           },
           onError: (err) {
@@ -1994,16 +2075,28 @@ class _MyHomePageState extends State<MyHomePage> {
     ReceiveSharingIntent.instance.getInitialMedia().then((
       List<SharedMediaFile> value,
     ) {
-      if (value.isNotEmpty) {
-        _handleSharedFile(value.first.path);
-        // Clear the initial shared file to prevent re-processing
-        ReceiveSharingIntent.instance.reset();
+      if (value.isNotEmpty && !_initialShareHandled) {
+        _initialShareHandled = true;
+        // Defer handling until first frame to avoid layout/white screen issues
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          if (_importInProgress) return;
+          final p = value.first.path;
+          if (p.isNotEmpty) {
+            await _handleSharedFile(p);
+          }
+          // Clear the initial shared file to prevent re-processing
+          try {
+            await ReceiveSharingIntent.instance.reset();
+          } catch (_) {}
+        });
       }
     });
   }
 
   Future<void> _handleSharedFile(String filePath) async {
     try {
+      if (_importInProgress) return;
       if (!filePath.toLowerCase().endsWith('.smbundle')) {
         setState(() => _status = _t('status_select_smbundle'));
         return;
@@ -2699,11 +2792,15 @@ class _MyHomePageState extends State<MyHomePage> {
       });
   }
 
-  Future<void> _goFullscreen() async {
+  Future<void> _goFullscreen({
+    bool explicitEntry = false,
+    Orientation? initialOrientation,
+  }) async {
     final c = _controller;
     if (c == null || !c.value.isInitialized) return;
     if (_inFullscreen) return;
     _inFullscreen = true;
+    _lastFullscreenTriggerAt = DateTime.now();
     try {
       await services.SystemChrome.setEnabledSystemUIMode(
         services.SystemUiMode.immersiveSticky,
@@ -2720,20 +2817,40 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!mounted) return;
     try {
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => _FullscreenVideoPage(controller: c)),
+        MaterialPageRoute(
+          builder: (_) => _FullscreenVideoPage(
+            controller: c,
+            explicitEntry: explicitEntry,
+            initialOrientation:
+                initialOrientation ?? MediaQuery.of(context).orientation,
+          ),
+        ),
       );
     } finally {
       _inFullscreen = false;
     }
 
     // Restore UI and portrait orientation on exit
+    // If we exited while still in landscape (e.g., via close button),
+    // suppress auto re-entry until we see portrait again and add a short cooldown.
+    try {
+      Orientation? ori;
+      if (mounted) {
+        ori = MediaQuery.of(context).orientation;
+      }
+      if (ori == Orientation.landscape) {
+        _suppressAutoFullscreenUntilPortrait = true;
+      }
+      // Short cooldown to avoid bounce on immediate orientation callbacks
+      _lastFullscreenTriggerAt = DateTime.now();
+    } catch (_) {}
+
     try {
       await services.SystemChrome.setEnabledSystemUIMode(
         services.SystemUiMode.edgeToEdge,
       );
-      await services.SystemChrome.setPreferredOrientations(const [
-        services.DeviceOrientation.portraitUp,
-      ]);
+      // Respect the user's default orientation preference outside fullscreen
+      await _applyDefaultOrientations();
     } catch (_) {}
   }
 
@@ -3943,15 +4060,27 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       final ori = MediaQuery.of(context).orientation;
       final isLandscape = ori == Orientation.landscape;
+      // Clear any suppression once we observe portrait again
+      if (ori == Orientation.portrait && _suppressAutoFullscreenUntilPortrait) {
+        _suppressAutoFullscreenUntilPortrait = false;
+      }
+      final now = DateTime.now();
+      final recentlyTriggered =
+          _lastFullscreenTriggerAt != null &&
+          now.difference(_lastFullscreenTriggerAt!).inMilliseconds < 800;
       if (isLandscape &&
           _isCurrentVideo &&
           _controller?.value.isInitialized == true &&
           !_inFullscreen &&
-          _autoFullscreenOnRotate) {
+          _autoFullscreenOnRotate &&
+          !_suppressAutoFullscreenUntilPortrait &&
+          !recentlyTriggered) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (_inFullscreen) return;
-          _goFullscreen();
+          // Record the trigger time to avoid rapid re-entry loops
+          _lastFullscreenTriggerAt = DateTime.now();
+          _goFullscreen(explicitEntry: false, initialOrientation: ori);
         });
       }
     } catch (_) {}
@@ -4345,7 +4474,15 @@ class _MyHomePageState extends State<MyHomePage> {
                               IconButton(
                                 tooltip: t('fullscreen'),
                                 icon: const Icon(Icons.fullscreen),
-                                onPressed: _goFullscreen,
+                                onPressed: () {
+                                  final ori = MediaQuery.of(
+                                    context,
+                                  ).orientation;
+                                  _goFullscreen(
+                                    explicitEntry: true,
+                                    initialOrientation: ori,
+                                  );
+                                },
                               ),
                             ],
                             const SizedBox(width: 12),
@@ -4493,7 +4630,13 @@ class LanguageSettingsPage extends StatefulWidget {
 
 class _FullscreenVideoPage extends StatefulWidget {
   final VideoPlayerController controller;
-  const _FullscreenVideoPage({required this.controller});
+  final bool explicitEntry;
+  final Orientation initialOrientation;
+  const _FullscreenVideoPage({
+    required this.controller,
+    required this.explicitEntry,
+    required this.initialOrientation,
+  });
 
   @override
   State<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
@@ -4515,18 +4658,27 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
     // If device rotates back to portrait, schedule a graceful exit.
     try {
       final ori = MediaQuery.of(context).orientation;
-      if (ori == Orientation.portrait && !_exiting) {
-        _exitTimer?.cancel();
-        _exitTimer = Timer(const Duration(milliseconds: 300), () {
-          if (!mounted || _exiting) return;
-          final nowOri = MediaQuery.of(context).orientation;
-          if (nowOri == Orientation.portrait) {
-            _exiting = true;
-            Navigator.of(context).maybePop();
-          }
-        });
-      } else if (ori == Orientation.landscape) {
-        // Cancel any pending exit if user rotated back to landscape quickly.
+      final shouldAutoExitOnPortrait =
+          !widget.explicitEntry ||
+          (widget.explicitEntry &&
+              widget.initialOrientation == Orientation.landscape);
+      if (shouldAutoExitOnPortrait) {
+        if (ori == Orientation.portrait && !_exiting) {
+          _exitTimer?.cancel();
+          _exitTimer = Timer(const Duration(milliseconds: 300), () {
+            if (!mounted || _exiting) return;
+            final nowOri = MediaQuery.of(context).orientation;
+            if (nowOri == Orientation.portrait) {
+              _exiting = true;
+              Navigator.of(context).maybePop();
+            }
+          });
+        } else if (ori == Orientation.landscape) {
+          // Cancel any pending exit if user rotated back to landscape quickly.
+          _exitTimer?.cancel();
+        }
+      } else {
+        // Explicit portrait fullscreen: never auto-exit based on orientation.
         _exitTimer?.cancel();
       }
     } catch (_) {}
@@ -4597,6 +4749,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   bool _verboseImportLogs = false;
   String? _lastLogPath;
   bool _autoFullscreenOnRotate = true;
+  bool _allowLandscapeInApp = false;
 
   @override
   void initState() {
@@ -4623,6 +4776,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
       _verboseImportLogs = prefs.getBool('verboseImportLogs') ?? false;
       _lastLogPath = prefs.getString('lastImportLogPath');
       _autoFullscreenOnRotate = prefs.getBool('autoFullscreenOnRotate') ?? true;
+      _allowLandscapeInApp = prefs.getBool('allowLandscapeInApp') ?? false;
     });
   }
 
@@ -4676,6 +4830,31 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 _myAppKey.currentState?.setLocaleCode(it[0]);
               },
             ),
+          const Divider(height: 16),
+          // Orientation settings
+          SwitchListTile(
+            title: Text(t('allow_landscape')),
+            subtitle: Text(t('allow_landscape_desc')),
+            value: _allowLandscapeInApp,
+            onChanged: (v) async {
+              setState(() => _allowLandscapeInApp = v);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('allowLandscapeInApp', v);
+              try {
+                if (v) {
+                  await services.SystemChrome.setPreferredOrientations(const [
+                    services.DeviceOrientation.portraitUp,
+                    services.DeviceOrientation.landscapeLeft,
+                    services.DeviceOrientation.landscapeRight,
+                  ]);
+                } else {
+                  await services.SystemChrome.setPreferredOrientations(const [
+                    services.DeviceOrientation.portraitUp,
+                  ]);
+                }
+              } catch (_) {}
+            },
+          ),
           const Divider(height: 16),
           ListTile(
             title: Text(t('custom_translations')),

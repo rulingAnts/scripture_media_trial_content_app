@@ -470,6 +470,19 @@
     </div>
   </div>
 
+  <!-- Modal overlay for foreground messages -->
+  <div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" style="background:#fff; border-radius:10px; max-width:640px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden;">
+      <div style="padding:16px 20px; border-bottom:1px solid #eee; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#fff;">
+        <h2 id="modal-title" style="font-size:18px;" data-i18n="success_title">Success!</h2>
+      </div>
+      <div id="modal-body" style="padding:20px; color:#333; line-height:1.5; font-size:14px;"></div>
+      <div style="padding:14px 20px; border-top:1px solid #eee; display:flex; justify-content:flex-end; gap:10px; background:#fafafa;">
+        <button id="modal-ok" class="button button-primary" data-i18n="ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>

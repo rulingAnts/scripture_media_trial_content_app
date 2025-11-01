@@ -81,7 +81,8 @@ const i18n = {
       archive: 'Archive:',
       transfer_line1: 'You can now transfer this secure .smbundle file to authorized devices.',
       transfer_line2: 'The bundle is protected and compressed for security.',
-      failed_create_prefix: 'Failed to create bundle: '
+      failed_create_prefix: 'Failed to create bundle: ',
+      ok: 'OK'
     }
   }
 };
@@ -162,7 +163,8 @@ i18n.strings.es = {
   archive: 'Archivo:',
   transfer_line1: 'Ahora puedes transferir este archivo .smbundle seguro a dispositivos autorizados.',
   transfer_line2: 'El paquete está protegido y comprimido por seguridad.',
-  failed_create_prefix: 'Error al crear el paquete: '
+  failed_create_prefix: 'Error al crear el paquete: ',
+  ok: 'Aceptar'
 };
 
 i18n.strings.fr = {
@@ -240,7 +242,8 @@ i18n.strings.fr = {
   archive: 'Archive :',
   transfer_line1: 'Vous pouvez maintenant transférer ce fichier .smbundle sécurisé vers les appareils autorisés.',
   transfer_line2: 'Le lot est protégé et compressé pour la sécurité.',
-  failed_create_prefix: 'Échec de création du lot : '
+  failed_create_prefix: 'Échec de création du lot : ',
+  ok: 'OK'
 };
 
 i18n.strings.nl = {
@@ -318,7 +321,8 @@ i18n.strings.nl = {
   archive: 'Archief:',
   transfer_line1: 'Je kunt dit beveiligde .smbundle-bestand nu overzetten naar gemachtigde apparaten.',
   transfer_line2: 'De bundel is beschermd en gecomprimeerd voor veiligheid.',
-  failed_create_prefix: 'Kan bundel niet maken: '
+  failed_create_prefix: 'Kan bundel niet maken: ',
+  ok: 'OK'
 };
 
 i18n.strings.af = {
@@ -396,7 +400,8 @@ i18n.strings.af = {
   archive: 'Argief:',
   transfer_line1: 'Jy kan hierdie veilige .smbundle-lêer nou oorsit na gemagtigde toestelle.',
   transfer_line2: 'Die bondel is beskerm en saamgepers vir veiligheid.',
-  failed_create_prefix: 'Kon nie bondel skep nie: '
+  failed_create_prefix: 'Kon nie bondel skep nie: ',
+  ok: 'OK'
 };
 
 i18n.strings.de = {
@@ -474,7 +479,8 @@ i18n.strings.de = {
   archive: 'Archiv:',
   transfer_line1: 'Sie können diese sichere .smbundle-Datei nun auf autorisierte Geräte übertragen.',
   transfer_line2: 'Das Paket ist zum Schutz komprimiert und gesichert.',
-  failed_create_prefix: 'Paket konnte nicht erstellt werden: '
+  failed_create_prefix: 'Paket konnte nicht erstellt werden: ',
+  ok: 'OK'
 };
 
 i18n.strings.pt = {
@@ -552,7 +558,8 @@ i18n.strings.pt = {
   archive: 'Arquivo:',
   transfer_line1: 'Agora você pode transferir este arquivo .smbundle seguro para dispositivos autorizados.',
   transfer_line2: 'O pacote está protegido e comprimido para segurança.',
-  failed_create_prefix: 'Falha ao criar o pacote: '
+  failed_create_prefix: 'Falha ao criar o pacote: ',
+  ok: 'OK'
 };
 
 i18n.strings.id = {
@@ -630,7 +637,8 @@ i18n.strings.id = {
   archive: 'Arsip:',
   transfer_line1: 'Anda dapat mentransfer berkas .smbundle aman ini ke perangkat yang diizinkan.',
   transfer_line2: 'Bundel dilindungi dan dikompresi untuk keamanan.',
-  failed_create_prefix: 'Gagal membuat bundel: '
+  failed_create_prefix: 'Gagal membuat bundel: ',
+  ok: 'OK'
 };
 
 i18n.strings.ru = {
@@ -708,7 +716,8 @@ i18n.strings.ru = {
   archive: 'Архив:',
   transfer_line1: 'Теперь вы можете передать этот защищенный файл .smbundle на авторизованные устройства.',
   transfer_line2: 'Пакет защищён и сжат в целях безопасности.',
-  failed_create_prefix: 'Не удалось создать пакет: '
+  failed_create_prefix: 'Не удалось создать пакет: ',
+  ok: 'ОК'
 };
 
 i18n.strings.hi = {
@@ -786,7 +795,8 @@ i18n.strings.hi = {
   archive: 'आर्काइव:',
   transfer_line1: 'अब आप इस सुरक्षित .smbundle फाइल को अधिकृत डिवाइसों में ट्रांसफर कर सकते हैं।',
   transfer_line2: 'बंडल सुरक्षा के लिए संरक्षित और संपीड़ित है।',
-  failed_create_prefix: 'बंडल बनाने में विफल: '
+  failed_create_prefix: 'बंडल बनाने में विफल: ',
+  ok: 'ठीक'
 };
 
 i18n.strings.ar = {
@@ -864,7 +874,8 @@ i18n.strings.ar = {
   archive: 'الأرشيف:',
   transfer_line1: 'يمكنك الآن نقل ملف ‎.smbundle الآمن هذا إلى الأجهزة المصرح بها.',
   transfer_line2: 'الحزمة محمية ومضغوطة من أجل الأمان.',
-  failed_create_prefix: 'فشل إنشاء الحزمة: '
+  failed_create_prefix: 'فشل إنشاء الحزمة: ',
+  ok: 'حسنًا'
 };
 
 i18n.strings.zh = {
@@ -942,7 +953,8 @@ i18n.strings.zh = {
   archive: '归档：',
   transfer_line1: '您现在可以将此安全的 .smbundle 文件传输到已授权设备。',
   transfer_line2: '该包已受保护并压缩以确保安全。',
-  failed_create_prefix: '创建包失败：'
+  failed_create_prefix: '创建包失败：',
+  ok: '确定'
 };
 
 i18n.strings.tpi = {
@@ -1020,7 +1032,8 @@ i18n.strings.tpi = {
   archive: 'Kaikai bilong fail:',
   transfer_line1: 'Nau yu ken salim dispela seif .smbundle fail i go long ol divais i gat pe.',
   transfer_line2: 'Bunol i seif na i kisim smolpela mak bilong kisim gutpela seif.',
-  failed_create_prefix: 'No inap mekim bunol: '
+  failed_create_prefix: 'No inap mekim bunol: ',
+  ok: 'OK'
 };
 
 function detectLocale() {
@@ -1057,6 +1070,9 @@ function applyI18n() {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY) || 'system';
     langSelectEl.value = stored;
   }
+  // Update modal button label if present
+  const modalOk = document.getElementById('modal-ok');
+  if (modalOk) modalOk.innerText = t('ok');
 }
 
 let mediaFiles = [];
@@ -1082,6 +1098,23 @@ const mediaList = document.getElementById('media-list');
 const createBundleButton = document.getElementById('create-bundle-button');
 const resetFormButton = document.getElementById('reset-form-button');
 const resetSettingsButton = document.getElementById('reset-settings-button');
+// Modal elements
+const modalOverlay = document.getElementById('modal-overlay');
+const modalTitle = document.getElementById('modal-title');
+const modalBody = document.getElementById('modal-body');
+const modalOk = document.getElementById('modal-ok');
+
+function openModal(titleText, htmlBody) {
+  if (!modalOverlay || !modalTitle || !modalBody) return;
+  modalTitle.innerText = titleText || '';
+  modalBody.innerHTML = htmlBody || '';
+  modalOverlay.style.display = 'flex';
+}
+
+function closeModal() {
+  if (!modalOverlay) return;
+  modalOverlay.style.display = 'none';
+}
 const messageContainer = document.getElementById('message-container');
 const loadingDiv = document.getElementById('loading');
 const langSelect = document.getElementById('lang-select');
@@ -1112,6 +1145,12 @@ if (langSelect) {
     renderMediaList();
   });
 }
+
+// Modal events
+if (modalOk) modalOk.addEventListener('click', closeModal);
+if (modalOverlay) modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
 
 // Persist on all input changes
 [
@@ -1441,24 +1480,9 @@ ${t('transfer_line2')}`);
 }
 
 function showSuccess(message) {
-  // Bring the success message to the front so users don't miss it
-  try {
-    // Use a blocking alert to ensure visibility regardless of scroll position
-    alert(message);
-  } catch (e) {
-    // In case alert is blocked or unavailable, fall back to banner only
-  }
-
-  messageContainer.innerHTML = `
-    <div class="success-message">
-      <strong>${t('success_title')}</strong><br>
-      ${message.replace(/\n/g, '<br>')}
-    </div>
-  `;
-  
-  setTimeout(() => {
-    messageContainer.innerHTML = '';
-  }, 10000);
+  // Use custom non-blocking modal in front of the app
+  const bodyHtml = (message || '').replace(/\n/g, '<br>');
+  openModal(t('bundle_created_title'), bodyHtml);
 }
 
 function showError(message) {

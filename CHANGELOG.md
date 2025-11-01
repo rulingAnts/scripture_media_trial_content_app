@@ -21,6 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored bundle import logic into reusable `_processBundle()` method
 - Added `receive_sharing_intent` package for handling shared files
 
+### Changed
+- Desktop: Renderer-side i18n system with data-i18n markers; added locales (system, en, es, fr, nl, af, de, pt, id, ru, hi, ar, zh, tpi)
+- Desktop: Success messages now use a custom non-blocking modal overlay (foreground) with localized strings, replacing the blocking alert
+- Mobile (Android): Configured intent-filters for VIEW, SEND, and SEND_MULTIPLE to open/share .smbundle files; MainActivity forwards onNewIntent to receive_sharing_intent
+
+### Fixed
+- Mobile (Flutter): More reliable fullscreen behavior
+  - Auto-enter fullscreen on rotate now throttled to avoid rapid re-entry loops on bouncy rotations
+  - On exiting fullscreen, allowed orientations now include portrait and landscape so future rotations can re-trigger fullscreen
+  - Fullscreen button restored: enters fullscreen matching current orientation (portrait or landscape). Auto behavior still enters on landscape and exits on portrait; suppression prevents bounce.
+  - New setting to allow landscape rotation outside fullscreen; default portrait-only preserved if disabled
+
 ## [1.0.0] - 2024-01-15
 
 ### Added
