@@ -158,11 +158,12 @@ With file association (automatic):
 
 #### Can I use multiple bundles?
 
-Yes! You can:
-- Import multiple bundles
-- Each bundle is independent
-- Switch between bundles
-- Each has its own playback limits
+Currently, only one bundle can be active on the device at a time:
+- Importing a new bundle replaces the previously active bundle’s content
+- Previously used (older) bundles cannot be re-activated (anti-rollback)
+- Each new bundle carries its own limits and expiration
+
+If you need to compare or switch between bundles regularly, let us know—adding a bundle selector is feasible, but we prioritize preventing rollbacks that could weaken security policies.
 
 #### What if I reach playback limit?
 
@@ -414,6 +415,7 @@ When suggesting features:
 
 - Never store keys on disk
 - Encrypt sensitive data or protect with streaming obfuscation
+
 - Validate all inputs
 - Handle errors securely
 - Document security decisions

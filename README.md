@@ -26,6 +26,15 @@ An app designed to allow specific people to share trial content (that doesn't ye
 - Anti-sharing protections prevent content redistribution
 - No cloud dependencies - everything works offline
 
+## Security model at a glance
+
+- Device binding: Android ID allowlist checked on import
+- Content keys: A random per-bundle key is wrapped per authorized device (CryptoJS/OpenSSL-compatible). The mobile app unwraps it in-memory only.
+- Media protection: xor-v1 streaming obfuscation keyed by the bundle key and per-file salt (current default); legacy bundles may use AES-256-CBC with OpenSSL salted headers.
+- Configuration: Bundle config is encrypted with a shared config key.
+- Integrity: Checksums and integrity fields detect tampering.
+- Limitations: Rooted devices, screen recording, and time manipulation are partially or not mitigated. See TECHNICAL.md for details.
+
 ## Project Structure
 
 ```
