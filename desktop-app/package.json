@@ -1,6 +1,6 @@
 {
   "name": "scripture-media-desktop-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Desktop app for creating Scripture Media bundles",
   "author": "Scripture Media Team",
   "main": "src/main.js",

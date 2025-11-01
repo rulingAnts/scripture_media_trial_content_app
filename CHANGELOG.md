@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- No unreleased changes yet.
+
+## [1.1.0] - 2025-11-01
+
 ### Added
-- **Android File Association for .smbundle files**
+- Android File Association for .smbundle files
   - Intent filters for VIEW action (opening from file managers)
   - Intent filters for SEND action (sharing from other apps)
   - Automatic bundle processing when files are opened or shared
@@ -20,8 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Refactored bundle import logic into reusable `_processBundle()` method
 - Added `receive_sharing_intent` package for handling shared files
-
-### Changed
 - Desktop: Renderer-side i18n system with data-i18n markers; added locales (system, en, es, fr, nl, af, de, pt, id, ru, hi, ar, zh, tpi)
 - Desktop: Success messages now use a custom non-blocking modal overlay (foreground) with localized strings, replacing the blocking alert
 - Mobile (Android): Configured intent-filters for VIEW, SEND, and SEND_MULTIPLE to open/share .smbundle files; MainActivity forwards onNewIntent to receive_sharing_intent
