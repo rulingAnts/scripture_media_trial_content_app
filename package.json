@@ -10,6 +10,9 @@
     "build:desktop": "scripts/build_desktop.sh",
     "build:desktop:mac": "scripts/build_desktop.sh --mac",
     "build:desktop:win": "scripts/build_desktop.sh --win",
-    "build:desktop:all": "scripts/build_desktop.sh --all"
+    "build:desktop:all": "scripts/build_desktop.sh --all",
+    "clean:dist": "scripts/clean_dist.sh",
+    "release:pack": "scripts/build_apk.sh --release --no-install && scripts/build_desktop.sh --all",
+    "release:pack:clean": "npm run release:pack && npm run clean:dist"
   }
 }
