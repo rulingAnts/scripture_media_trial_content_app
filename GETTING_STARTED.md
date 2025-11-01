@@ -1,6 +1,6 @@
 # Getting Started
 
-Complete guide for setting up and using the Scripture Media Trial Content App.
+Complete guide for setting up and using the Scripture Media Trial Content App for developers (we do have installers for the rest of us, see the ["Releases"](https://github.com/rulingAnts/scripture_media_trial_content_app/releases/latest) page).
 
 ## Quick Start (5 Minutes)
 

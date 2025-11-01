@@ -68,16 +68,16 @@ scripture_media_trial_content_app/
 
 #### encryption.js
 
-Provides AES-256 encryption using CryptoJS:
-
-```javascript
-encrypt(data, key) → encryptedData
-decrypt(encryptedData, key) → originalData
+Provides CryptoJS-based helpers used for configuration encryption and key wrapping:
+```
+encrypt(data, key) → encryptedData           // OpenSSL-compatible output
+decrypt(encryptedData, key) → originalData   // Accepts OpenSSL salted input
 generateDeviceKey(deviceId, salt) → deviceKey
 ```
 
-- Uses AES-256 encryption
-- SHA-256 for key derivation
+- AES (CryptoJS) for configuration and key wrapping
+- SHA-256 for device key derivation
+- Per-device wrapped bundle key (v2.1+) prevents unauthorized access
 - Device-specific keys prevent unauthorized access
 
 #### bundle-schema.js
@@ -164,16 +164,17 @@ Handles:
 1. User configures bundle parameters
 2. User selects media files
 3. User selects output directory
-4. For each media file:
-   - Generate unique media ID (UUID)
-   - Read file into memory
-   - Convert to Base64
-   - Encrypt with device key
-   - Calculate checksum
-5. Create bundle configuration
-6. Encrypt configuration
-7. Package as `.smbundle` (tar.gz archive)
-8. Return bundle location to user
+4. Generate a random per-bundle content key (32 bytes)
+5. For each media file (streaming, no full file in memory):
+  - Generate unique media ID (UUID)
+  - Stream original bytes, compute SHA-256 checksum
+  - Apply lightweight xor-v1 obfuscation using the bundle key + per-file salt
+  - Write `.obf` output to `media/`
+6. For each authorized device ID, derive a wrapping key via SHA-256(deviceId + salt) and encrypt (wrap) the bundle key
+7. Create bundle configuration (includes: media entries, integrity, per-device wrapped keys)
+8. Encrypt the bundle configuration with a shared config key
+9. Package as `.smbundle` (tar.gz archive)
+10. Return bundle location to user
 
 ### Mobile App (Flutter)
 
@@ -294,39 +295,41 @@ final deviceId = await getAndroidId();
 - Root access can potentially spoof device ID
 - Device cloning (extremely rare)
 
-#### 2. Content Encryption
+#### 2. Content Protection
 
-**Mechanism**:
-- AES-256 encryption for all media files
-- Device-specific encryption keys
-- Key derivation: SHA-256(deviceId + salt)
+**Mechanisms**:
+- Media: xor-v1 streaming obfuscation keyed by a random per-bundle content key + per-file salt (current default)
+- Legacy support: AES-256-CBC with OpenSSL salted header (CryptoJS-compatible) for media encrypted in older bundles
+- Configuration: encrypted with a shared config key (CryptoJS)
+- Key management: per-device wrapping of the bundle content key using a SHA-256(deviceId + salt)-derived key
 
-**Desktop (CryptoJS)**:
+**Desktop (key wrapping)**:
 ```javascript
 const deviceKey = generateDeviceKey(deviceId, salt);
-const encryptedData = CryptoJS.AES.encrypt(mediaData, deviceKey);
+const wrappedBundleKey = encrypt(bundleKey, deviceKey);
 ```
 
-**Mobile (Flutter/PointyCastle)**:
+**Mobile (unwrapping + media decode)**:
 ```dart
-final key = deriveKey(deviceId, salt);
-final decrypted = decryptAes256Cbc(encryptedData, key);
+final deviceKey = generateDeviceKey(androidId, salt);
+final bundleKey = decryptWrappedKey(wrapped, deviceKey); // CryptoJS/OpenSSL format
+// xor-v1: stream deobfuscation using bundleKey + per-file salt
+// legacy: stream AES-256-CBC decryption (OpenSSL salted header)
 ```
 
 **Key Properties**:
-- Keys never stored on disk
-- Derived on-demand from device ID
-- Different for each device
-- 256-bit key strength
+- Bundle key never stored on disk, only unwrapped in memory
+- Per-device wrapped keys inside the bundle (same bundle for all authorized devices)
+- 256-bit key material for CryptoJS AES operations
 
 **Threats Mitigated**:
-- File extraction from storage
+- File extraction from storage (non-playable without unwrapping)
 - Bundle copying to unauthorized devices
-- Network interception
+- Tampering (integrity checks)
 
 **Residual Risks**:
-- Memory extraction while decrypted (requires root/debugger)
-- Side-channel attacks (theoretical, low risk)
+- Memory extraction while content is in use (requires root/debugger)
+- xor-v1 is obfuscation (not cryptographically strong) but gated by device-bound key unwrapping
 
 #### 3. Secure Storage
 
@@ -580,9 +583,9 @@ updateLastKnownTime(currentTime);
 bundle_name.smbundle (tar.gz archive)
 ├── bundle.smb (encrypted configuration)
 └── media/
-    ├── uuid1.enc (encrypted media file)
-    ├── uuid2.enc
-    └── ...
+  ├── uuid1.ext.obf (obfuscated media file, xor-v1)
+  ├── uuid2.ext.obf
+  └── ...
 ```
 
 **Bundle Configuration** (before encryption):
@@ -618,10 +621,10 @@ app:lastKnownTime                           → Last known system time
 ## Performance
 
 ### Desktop App
-- **Memory**: Loads entire media files into memory for encryption
-- **Disk**: Requires 2x source media size (original + encrypted)
-- **CPU**: AES encryption is CPU-intensive for large files
-- **Optimization**: Process files sequentially to manage memory
+- **Memory**: Streams media during obfuscation (no full-file buffering)
+- **Disk**: Requires ~1x source media size during processing (+temporary files)
+- **CPU**: xor-v1 is lightweight; checksum computation is the main cost
+- **Optimization**: Sequential streaming, per-file salt, integrity recorded
 
 ### Mobile App
 - **Storage**: Encrypted files similar size to originals

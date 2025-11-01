@@ -65,9 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reusable across desktop and mobile
 
 #### Security Features
-- Device-specific encryption keys
-- Hardware-based device binding
-- Encrypted file storage
+- Device-bound content keys (per-device wrapped bundle key)
+- Android ID–based device binding (allowlist)
+- Protected file storage (non-playable at rest)
 - Temporary file cleanup
 - Playback limit enforcement
 - Anti-export measures

@@ -15,10 +15,10 @@ Frequently asked questions, contributing guidelines, and support resources.
 #### What is this application for?
 
 This app allows content creators to share trial media content (like audio/video scripture recordings) with a limited audience before final approval. The content is:
-- Locked to specific devices
+- Locked to specific devices (Android ID–based)
 - Limited in how many times it can be played
-- Encrypted and cannot be extracted
-- Designed to prevent unauthorized sharing
+- Protected at rest (encryption/obfuscation) to deter extraction
+- Designed to discourage unauthorized sharing
 
 #### Who should use this?
 
@@ -35,42 +35,42 @@ No! This app works completely offline. No internet connection is required for:
 
 #### What platforms are supported?
 
-- **Desktop Bundler**: Windows, macOS, Linux (via Electron)
-- **Mobile App**: Android (iOS support planned)
+- **Desktop Bundler**: Windows, macOS (via Electron)
+- **Mobile App**: Android
 
 ### Security Questions
 
 #### How secure is this?
 
 The app uses multiple security layers:
-- AES-256 encryption for media files
-- Device-specific encryption keys
-- Hardware-based device binding
+- Device binding (Android ID allowlist)
+- Per-device wrapped content keys inside the bundle
+- Media protection at rest (xor-v1 obfuscation by default; legacy AES-256-CBC supported)
 - Playback tracking and limits
 - No export functionality
 
-However, it's not impenetrable. See [TECHNICAL.md](TECHNICAL.md) for detailed security analysis.
+However, it is not impenetrable. See [TECHNICAL.md](TECHNICAL.md) for a detailed security analysis and residual risks.
 
 #### Can content be extracted from the app?
 
 Not easily. Media files are:
-- Encrypted on disk with device-specific keys
-- Only decrypted temporarily during playback
+- Protected at rest and not playable outside the app
+- Only decrypted/deobfuscated temporarily during playback
 - Automatically cleaned up after use
-- Stored in app's private directory
+- Stored in the app's private directory
 
 However, users with root access or advanced tools could potentially extract content.
 
 #### What if someone shares the APK?
 
 The APK can be shared, but it won't help unauthorized users:
-- Content is encrypted with device-specific keys
 - Bundle verifies device authorization on load
-- Media won't decrypt on unauthorized devices
+- Content keys are device-bound; unauthorized devices can't unwrap the key
+- Media won't decrypt/deobfuscate on unauthorized devices
 
 #### Can users screen record the content?
 
-Yes, unfortunately. Android doesn't provide reliable screen recording prevention. Consider this a limitation and use legal agreements to discourage it.
+Yes, unfortunately. Android doesn't provide reliable screen recording prevention. Consider this a limitation and use legal agreements and/or visible watermarks to discourage it.
 
 #### What happens if a device is rooted?
 
@@ -85,19 +85,24 @@ Current version doesn't detect root. This is a known limitation.
 
 #### How are Device IDs generated?
 
-Device IDs come from Android's unique device identifier (Android ID):
-- Based on device hardware
-- Persists across app reinstalls
+Device IDs come from Android's software identifier (Android ID):
+- Set by the OS (not a hardware serial)
+- Persists across app reinstalls and OS updates
 - Changes on factory reset
-- Cannot be easily changed
+- Difficult to change without root access or device reset
 
 #### How does encryption work?
 
-1. Desktop app encrypts media with device-specific key
-2. Key is derived from device ID + salt using SHA-256
-3. Media encrypted with AES-256
-4. Mobile app derives same key from device ID
-5. Decrypts only during playback
+v2.1+ bundles (current default):
+1. Desktop generates a random per-bundle content key
+2. For each authorized device ID, derive a wrapping key via SHA-256(deviceId + salt)
+3. Encrypt ("wrap") the bundle content key per device (OpenSSL-compatible CryptoJS format)
+4. Protect media files using a fast, streaming scheme (xor-v1) keyed with the bundle key and per-file salt
+5. Mobile unwraps the bundle key using the device-derived wrapping key, then deobfuscates media on-the-fly during playback
+
+Legacy bundles (v2.0 and earlier):
+- Media may be encrypted with AES-256-CBC (OpenSSL salted header), using a key derived from the device ID
+- Mobile supports streaming decryption of this format for large files
 
 #### What happens when playback limit is reached?
 
@@ -169,7 +174,7 @@ Wait for the reset interval to pass:
 #### Can I backup my bundles?
 
 No built-in backup, by design:
-- Bundles are device-specific
+- Bundles are device-restricted
 - Backup/restore could bypass security
 - Keep original bundle files on computer
 - Re-import if needed
@@ -184,9 +189,9 @@ Factory reset changes device ID, so:
 #### Can I transfer content to a new device?
 
 No, content is device-specific by design:
-- Encrypted with original device's key
-- Won't work on different device
-- Need new bundle for new device
+- Access is bound to authorized device IDs
+- Won't work on a different device that isn't authorized
+- Request a new bundle for the new device
 
 ### Content Creation Questions
 
@@ -194,8 +199,8 @@ No, content is device-specific by design:
 
 Unlimited! Add as many device IDs as needed:
 - One per line in desktop app
-- All authorized devices use same bundle
-- Same encryption key for all
+- All authorized devices use the same bundle file
+- Each device has its own wrapped content key inside the bundle (no separate bundles required)
 
 #### Can I update a bundle after creation?
 
@@ -255,7 +260,7 @@ No remote revocation currently. However:
 - **Desktop**: Electron, Node.js, JavaScript
 - **Mobile**: Flutter, Dart, Android
 - **Shared**: JavaScript, CryptoJS
-- **Encryption**: AES-256, SHA-256
+- **Protection**: AES-256-CBC (legacy), xor-v1 obfuscation (current default for media), SHA-256 for key derivation
 
 #### Where should I start learning the codebase?
 
@@ -395,7 +400,7 @@ When suggesting features:
 - Validate all user inputs
 - Handle file operations safely
 - Provide user feedback for long operations
-- Support all platforms (Windows, macOS, Linux)
+- Support Windows and macOS (Linux as feasible)
 
 #### Mobile App
 
@@ -408,7 +413,7 @@ When suggesting features:
 #### Security
 
 - Never store keys on disk
-- Encrypt sensitive data
+- Encrypt sensitive data or protect with streaming obfuscation
 - Validate all inputs
 - Handle errors securely
 - Document security decisions
