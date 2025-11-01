@@ -8,6 +8,7 @@
 #   scripts/build_apk.sh --package com.example.mobile_app
 #   scripts/build_apk.sh --no-launch
 #   scripts/build_apk.sh --uninstall-first
+#   scripts/build_apk.sh --release --no-install --out-dir dist --out-name ScriptureDemoPlayer-1.1.0+2-release.apk
 #
 # Notes:
 # - Disables Gradle configuration cache for stability (as used during development).
@@ -27,6 +28,8 @@ DO_ANALYZE=1
 UNINSTALL_FIRST=0
 DEVICE_ID=""
 PACKAGE_OVERRIDE=""
+OUT_DIR=""
+OUT_NAME=""
 
 log() { echo -e "\033[1;36m[build_apk]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[build_apk][warn]\033[0m $*"; }
@@ -45,6 +48,8 @@ Options:
   --uninstall-first      Uninstall the app before installing (keeps data only if Android allows)
   --no-analyze           Skip 'flutter analyze'
   --package <name>       Override Android package name (otherwise auto-detected)
+  --out-dir <path>       Copy/rename built APK to this directory (created if missing)
+  --out-name <name>      Output filename (defaults to a descriptive name if only --out-dir is provided)
   -h, --help             Show this help
 
 Examples:
@@ -65,6 +70,8 @@ while [[ $# -gt 0 ]]; do
     --uninstall-first) UNINSTALL_FIRST=1; shift ;;
     --no-analyze) DO_ANALYZE=0; shift ;;
     --package) PACKAGE_OVERRIDE="${2:-}"; shift 2 ;;
+    --out-dir) OUT_DIR="${2:-}"; shift 2 ;;
+    --out-name) OUT_NAME="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) err "Unknown option: $1"; usage; exit 2 ;;
   esac
@@ -101,6 +108,52 @@ if [[ ! -f "$APK_PATH" ]]; then
   err "APK not found at $APK_PATH"; exit 1
 fi
 log "Built: $APK_PATH"
+
+# Determine version info once for naming
+APP_VERSION_LINE=$(sed -n 's/^version:[[:space:]]*\(.*\)$/\1/p' "$APP_DIR/pubspec.yaml" | head -n1 || true)
+APP_VERSION_NAME=$(printf "%s" "$APP_VERSION_LINE" | cut -d'+' -f1)
+APP_VERSION_CODE=$(printf "%s" "$APP_VERSION_LINE" | cut -s -d'+' -f2)
+[[ -z "$APP_VERSION_NAME" ]] && APP_VERSION_NAME="0.0.0"
+[[ -z "$APP_VERSION_CODE" ]] && APP_VERSION_CODE="0"
+
+# For release builds, always produce a helpful-named copy in dist unless overridden
+if [[ "$MODE" == "release" ]]; then
+  DEST_DIR=${OUT_DIR:-"$ROOT_DIR/dist"}
+  mkdir -p "$DEST_DIR"
+  # Ensure package name is available for naming (be nounset-safe)
+  PKG="${PACKAGE_NAME:-}"
+  if [[ -z "$PKG" ]]; then
+    if [[ -f "$MANIFEST" ]]; then
+      PKG=$(sed -n 's/.*package="\([^"]*\)".*/\1/p' "$MANIFEST" | head -n1 || true)
+    fi
+    [[ -z "$PKG" ]] && PKG="com.example.mobile_app"
+  fi
+  # Default friendly filename: ScriptureDemoPlayer-<version>
+  DEFAULT_NAME="ScriptureDemoPlayer-${APP_VERSION_NAME}+${APP_VERSION_CODE}.apk"
+  FINAL_NAME=${OUT_NAME:-"$DEFAULT_NAME"}
+  DEST="$DEST_DIR/$FINAL_NAME"
+  log "Copying APK to: $DEST"
+  cp -f "$APK_PATH" "$DEST"
+else
+  # Debug builds: only copy/rename if explicitly requested
+  if [[ -n "$OUT_DIR" || -n "$OUT_NAME" ]]; then
+    DEST_DIR=${OUT_DIR:-"$ROOT_DIR/dist"}
+    mkdir -p "$DEST_DIR"
+    PKG="${PACKAGE_NAME:-}"
+    if [[ -z "$PKG" ]]; then
+      if [[ -f "$MANIFEST" ]]; then
+        PKG=$(sed -n 's/.*package="\([^"]*\)".*/\1/p' "$MANIFEST" | head -n1 || true)
+      fi
+      [[ -z "$PKG" ]] && PKG="com.example.mobile_app"
+    fi
+    SAFE_PKG=${PKG//./-}
+    DEFAULT_NAME="${SAFE_PKG}-${APP_VERSION_NAME}+${APP_VERSION_CODE}-${MODE}.apk"
+    FINAL_NAME=${OUT_NAME:-"$DEFAULT_NAME"}
+    DEST="$DEST_DIR/$FINAL_NAME"
+    log "Copying APK to: $DEST"
+    cp -f "$APK_PATH" "$DEST"
+  fi
+fi
 
 if [[ $DO_INSTALL -eq 0 ]]; then
   log "Skipping install as requested"
