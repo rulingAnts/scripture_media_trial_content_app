@@ -1849,6 +1849,8 @@ class _MyHomePageState extends State<MyHomePage> {
   // Preference: allow landscape rotation in main UI (outside fullscreen)
   bool _allowLandscapeInApp = false;
   bool _initialShareHandled = false;
+  // Tooltip control for warning banner
+  final GlobalKey<TooltipState> _warningTooltipKey = GlobalKey<TooltipState>();
 
   @override
   void initState() {
@@ -4125,35 +4127,73 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.shade700),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.amber.shade800,
+              child: Tooltip(
+                key: _warningTooltipKey,
+                message: _t('ui_demo_warning'),
+                triggerMode: TooltipTriggerMode.tap,
+                showDuration: const Duration(seconds: 6),
+                waitDuration: const Duration(milliseconds: 0),
+                preferBelow: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () =>
+                      _warningTooltipKey.currentState?.ensureTooltipVisible(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 10,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _t('ui_demo_warning'),
-                        style: const TextStyle(color: Colors.black87),
-                      ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.amber.shade700),
                     ),
-                  ],
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.amber.shade800,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _t('ui_demo_warning'),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 12.5,
+                              height: 1.25,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () => _warningTooltipKey.currentState
+                              ?.ensureTooltipVisible(),
+                          borderRadius: BorderRadius.circular(16),
+                          child: const Padding(
+                            padding: EdgeInsets.all(2.0),
+                            child: Icon(
+                              Icons.more_horiz,
+                              size: 18,
+                              color: Colors.black54,
+                              semanticLabel: 'Show full message',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Center(child: Text(_status)),
             if (_importInProgress) ...[
               const SizedBox(height: 8),
