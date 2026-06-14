@@ -1886,6 +1886,12 @@ class _MediaPlayerController extends ValueNotifier<_PlaybackValue> {
   _MediaPlayerController() : super(const _PlaybackValue());
 
   final Player player = Player();
+  // NOTE: media_kit renders video into a Flutter texture via GL interop, which
+  // needs a REAL GPU. On software-GL systems (llvmpipe — the Parallels test VMs)
+  // the video texture is BLACK while audio/timeline run fine (plain mpv still
+  // renders there because it uses its own GL window). On real-GPU hardware (the
+  // ThinkPad) it renders normally. enableHardwareAcceleration:false does NOT
+  // help (it only affects decode), so we keep the default.
   late final VideoController videoController = VideoController(player);
   final List<StreamSubscription<dynamic>> _subs = [];
 
