@@ -42,6 +42,9 @@ contents:
   # MIME type definition for *.smbundle.
   - src: ./mobile_app/packaging/linux/scripture-media.xml
     dst: /usr/share/mime/packages/scripture-media.xml
+  # App icon (same artwork as the Android build) for the launcher / menus.
+  - src: ./mobile_app/assets/app_icon_1024.png
+    dst: /usr/share/icons/hicolor/512x512/apps/scripture-media-player.png
 
 scripts:
   postinstall: ./mobile_app/packaging/linux/postinstall.sh
