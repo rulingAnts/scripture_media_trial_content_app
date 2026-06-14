@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Registers the *.smbundle file type so the player can be its default handler.
+     Install to /usr/share/mime/packages/ then run: update-mime-database /usr/share/mime -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-smbundle">
+    <comment>Scripture Media bundle</comment>
+    <comment xml:lang="id">Paket Media Kitab Suci</comment>
+    <glob pattern="*.smbundle"/>
+    <icon name="scripture-media-player"/>
+  </mime-type>
+</mime-info>

@@ -18,6 +18,7 @@ import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:pointycastle/export.dart' as pc;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:window_manager/window_manager.dart';
@@ -177,8 +178,23 @@ Map<String, Uint8List> _evpBytesToKeyStatic(
   return {'key': key, 'iv': iv};
 }
 
-void main() async {
+// Desktop-only: a .smbundle path passed on the command line (e.g. opened from
+// a file manager via the registered file association). Consumed by the home
+// page on first frame to trigger an import.
+String? _pendingBundlePath;
+
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // The Linux/Windows/macOS runners forward argv to the Dart entrypoint, so a
+  // file-association "open" arrives here as a command-line argument.
+  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+    for (final a in args) {
+      if (a.toLowerCase().endsWith('.smbundle') && File(a).existsSync()) {
+        _pendingBundlePath = a;
+        break;
+      }
+    }
+  }
   MediaKit.ensureInitialized();
   // Desktop: init window_manager so fullscreen can cover the panel/taskbar,
   // and give a sensible default window that fits small (1024x768) screens
@@ -358,6 +374,9 @@ class L10n {
     'en': {
       'app_title': 'Scripture Demo Player',
       'device_id': 'Device ID',
+      'send_code': 'Send Code…',
+      'copy_code': 'Copy Code',
+      'code_copied': 'Code copied',
       'close': 'Close',
       'import_bundle': 'Import Bundle',
       'play': 'Play',
@@ -465,6 +484,9 @@ class L10n {
     'es': {
       'app_title': 'Reproductor de demostración de Escrituras',
       'device_id': 'ID del dispositivo',
+      'send_code': 'Enviar código…',
+      'copy_code': 'Copiar código',
+      'code_copied': 'Código copiado',
       'close': 'Cerrar',
       'import_bundle': 'Importar paquete',
       'play': 'Reproducir',
@@ -579,6 +601,9 @@ class L10n {
     'fr': {
       'app_title': 'Lecteur de démo des Écritures',
       'device_id': 'ID de l’appareil',
+      'send_code': 'Envoyer le code…',
+      'copy_code': 'Copier le code',
+      'code_copied': 'Code copié',
       'close': 'Fermer',
       'import_bundle': 'Importer le lot',
       'play': 'Lire',
@@ -685,6 +710,9 @@ class L10n {
     'de': {
       'app_title': 'Schrift Demo-Player',
       'device_id': 'Geräte-ID',
+      'send_code': 'Code senden…',
+      'copy_code': 'Code kopieren',
+      'code_copied': 'Code kopiert',
       'close': 'Schließen',
       'import_bundle': 'Paket importieren',
       'play': 'Abspielen',
@@ -794,6 +822,9 @@ class L10n {
     'nl': {
       'app_title': 'Schrift Demo-speler',
       'device_id': 'Apparaat-ID',
+      'send_code': 'Code verzenden…',
+      'copy_code': 'Code kopiëren',
+      'code_copied': 'Code gekopieerd',
       'close': 'Sluiten',
       'import_bundle': 'Bundel importeren',
       'play': 'Afspelen',
@@ -898,6 +929,9 @@ class L10n {
     'af': {
       'app_title': 'Skrif Demo Speler',
       'device_id': 'Toestel-ID',
+      'send_code': 'Stuur kode…',
+      'copy_code': 'Kopieer kode',
+      'code_copied': 'Kode gekopieer',
       'close': 'Sluit',
       'import_bundle': 'Voeg bondel in',
       'play': 'Speel',
@@ -1005,6 +1039,9 @@ class L10n {
     'pt': {
       'app_title': 'Reprodutor de Demonstração das Escrituras',
       'device_id': 'ID do dispositivo',
+      'send_code': 'Enviar código…',
+      'copy_code': 'Copiar código',
+      'code_copied': 'Código copiado',
       'close': 'Fechar',
       'import_bundle': 'Importar pacote',
       'play': 'Reproduzir',
@@ -1114,6 +1151,9 @@ class L10n {
     'id': {
       'app_title': 'Pemutar Demo Kitab Suci',
       'device_id': 'ID Perangkat',
+      'send_code': 'Kirim Kode…',
+      'copy_code': 'Salin Kode',
+      'code_copied': 'Kode disalin',
       'close': 'Tutup',
       'import_bundle': 'Impor Bundel',
       'play': 'Putar',
@@ -1226,6 +1266,9 @@ class L10n {
     'ru': {
       'app_title': 'Демонстрационный плеер Писания',
       'device_id': 'ID устройства',
+      'send_code': 'Отправить код…',
+      'copy_code': 'Копировать код',
+      'code_copied': 'Код скопирован',
       'close': 'Закрыть',
       'import_bundle': 'Импортировать пакет',
       'play': 'Воспроизвести',
@@ -1334,6 +1377,9 @@ class L10n {
     'hi': {
       'app_title': 'शास्त्र डेमो प्लेयर',
       'device_id': 'डिवाइस आईडी',
+      'send_code': 'कोड भेजें…',
+      'copy_code': 'कोड कॉपी करें',
+      'code_copied': 'कोड कॉपी किया गया',
       'close': 'बंद करें',
       'import_bundle': 'बंडल आयात करें',
       'play': 'चलाएँ',
@@ -1440,6 +1486,9 @@ class L10n {
     'ar': {
       'app_title': 'مشغل عرض الكتاب المقدس',
       'device_id': 'معرّف الجهاز',
+      'send_code': 'إرسال الرمز…',
+      'copy_code': 'نسخ الرمز',
+      'code_copied': 'تم نسخ الرمز',
       'close': 'إغلاق',
       'import_bundle': 'استيراد الحزمة',
       'play': 'تشغيل',
@@ -1543,6 +1592,9 @@ class L10n {
     'zh': {
       'app_title': '经文演示播放器',
       'device_id': '设备 ID',
+      'send_code': '发送代码…',
+      'copy_code': '复制代码',
+      'code_copied': '代码已复制',
       'close': '关闭',
       'import_bundle': '导入包',
       'play': '播放',
@@ -1632,6 +1684,9 @@ class L10n {
     'tpi': {
       'app_title': 'Scripture Demo Pleya',
       'device_id': 'Divais ID',
+      'send_code': 'Salim Kod…',
+      'copy_code': 'Kopi Kod',
+      'code_copied': 'Kod i kopi pinis',
       'close': 'Klosim',
       'import_bundle': 'Karim bunld i kam insait',
       'play': 'Pilay',
@@ -1958,6 +2013,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _configureAudioSession();
     if (Platform.isAndroid || Platform.isIOS) {
       _initReceiveSharingIntent();
+    } else if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+      _handlePendingDesktopBundle();
     }
     // Start a lightweight UI ticker so countdowns update live
     _uiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -2156,6 +2213,33 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() => _deviceId = deviceId ?? 'Unknown');
   }
 
+  // Copy the device ID to the clipboard and confirm with a snackbar.
+  Future<void> _copyDeviceId() async {
+    await Clipboard.setData(ClipboardData(text: _deviceId));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_t('code_copied')),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Share the device ID. On Android/iOS this opens the native share sheet (so
+  // the user can send it via WhatsApp, etc.); elsewhere it falls back to copy.
+  Future<void> _shareDeviceId() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: '${_t('device_id')}: $_deviceId',
+          subject: _t('device_id'),
+        ),
+      );
+    } else {
+      await _copyDeviceId();
+    }
+  }
+
   void _initReceiveSharingIntent() {
     // For sharing via share menu or opening from another app while app is in memory
     _intentDataStreamSubscription = ReceiveSharingIntent.instance
@@ -2202,6 +2286,24 @@ class _MyHomePageState extends State<MyHomePage> {
           } catch (_) {}
         });
       }
+    });
+  }
+
+  // Desktop file association: if the app was launched by opening a .smbundle
+  // (path captured in main()), import it once the first frame is up and the
+  // device id has resolved.
+  void _handlePendingDesktopBundle() {
+    final p = _pendingBundlePath;
+    if (p == null || p.isEmpty) return;
+    _pendingBundlePath = null;
+    if (_initialShareHandled) return;
+    _initialShareHandled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (_importInProgress) return;
+      await _getDeviceId(); // ensure _deviceId is resolved before the auth check
+      if (!mounted) return;
+      await _handleSharedFile(p);
     });
   }
 
@@ -4241,6 +4343,21 @@ class _MyHomePageState extends State<MyHomePage> {
                 content: SelectableText(_deviceId),
                 actions: [
                   TextButton(
+                    onPressed: () {
+                      _copyDeviceId();
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(t('copy_code')),
+                  ),
+                  if (Platform.isAndroid || Platform.isIOS)
+                    TextButton(
+                      onPressed: () {
+                        _shareDeviceId();
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(t('send_code')),
+                    ),
+                  TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(t('close')),
                   ),
@@ -4331,6 +4448,60 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ),
+            ),
+            // Prominent, findable device-ID card: see it, copy it, and on
+            // Android/iOS send it (e.g. via WhatsApp) so it can be authorized.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.key, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _t('device_id'),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54,
+                              ),
+                            ),
+                            SelectableText(
+                              _deviceId,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: _t('copy_code'),
+                        onPressed: _copyDeviceId,
+                      ),
+                      if (Platform.isAndroid || Platform.isIOS) ...[
+                        const SizedBox(width: 4),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.share),
+                          label: Text(_t('send_code')),
+                          onPressed: _shareDeviceId,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

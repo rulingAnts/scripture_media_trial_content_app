@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Scripture Media Player
+GenericName=Scripture audio/video player
+Comment=Scripture Media trial player (Linux test build)
+# NOTE: Exec path is the staged/kiosk install location; adjust for the final .deb layout.
+Exec=/opt/scripture-app/mobile_app %f
+Icon=applications-multimedia
+Terminal=false
+Categories=AudioVideo;Player;
+MimeType=application/x-smbundle;
+StartupNotify=true
