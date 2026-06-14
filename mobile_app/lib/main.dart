@@ -1898,21 +1898,29 @@ class _MediaPlayerController extends ValueNotifier<_PlaybackValue> {
     // Create the video output BEFORE opening media (see note above) so media_kit
     // attaches it and actually produces video frames; otherwise video is black.
     final _ = videoController;
-    _subs.add(player.stream.position.listen((p) {
-      value = value.copyWith(position: p);
-    }));
-    _subs.add(player.stream.duration.listen((d) {
-      value = value.copyWith(duration: d);
-    }));
-    _subs.add(player.stream.playing.listen((p) {
-      value = value.copyWith(isPlaying: p);
-    }));
-    _subs.add(player.stream.videoParams.listen((params) {
-      final aspect = params.aspect;
-      if (aspect != null && aspect > 0) {
-        value = value.copyWith(aspectRatio: aspect);
-      }
-    }));
+    _subs.add(
+      player.stream.position.listen((p) {
+        value = value.copyWith(position: p);
+      }),
+    );
+    _subs.add(
+      player.stream.duration.listen((d) {
+        value = value.copyWith(duration: d);
+      }),
+    );
+    _subs.add(
+      player.stream.playing.listen((p) {
+        value = value.copyWith(isPlaying: p);
+      }),
+    );
+    _subs.add(
+      player.stream.videoParams.listen((params) {
+        final aspect = params.aspect;
+        if (aspect != null && aspect > 0) {
+          value = value.copyWith(aspectRatio: aspect);
+        }
+      }),
+    );
     await player.open(Media(path), play: false);
     value = value.copyWith(isInitialized: true);
   }
@@ -4625,376 +4633,436 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 8),
             ],
 
-            // Playback area (video preview for video; simple banner for audio)
-            if (_controller != null && _controller!.value.isInitialized)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    if (_isCurrentVideo)
-                      // Compact inline player: capped to ~42% of screen height
-                      // so the playlist below stays visible, with a button to
-                      // expand to fullscreen (the fullscreen page has its own
-                      // close button to collapse back).
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight:
-                                MediaQuery.of(context).size.height * 0.42,
-                          ),
-                          child: AspectRatio(
-                            aspectRatio: _controller!.value.aspectRatio > 0
-                                ? _controller!.value.aspectRatio
-                                : 16 / 9,
-                            child: Stack(
-                              children: [
-                                Video(
-                                  controller: _controller!.videoController,
-                                  controls: NoVideoControls,
-                                ),
-                                Positioned(
-                                  right: 4,
-                                  bottom: 4,
-                                  child: Material(
-                                    color: Colors.black45,
-                                    shape: const CircleBorder(),
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.fullscreen,
-                                        color: Colors.white,
+            // Player + playlist. Side-by-side (video left, playlist right) when
+            // the window is wide (landscape / desktop) so the playlist gets the
+            // full height; stacked when narrow (phone portrait).
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool wideLayout =
+                      MediaQuery.of(context).size.width >= 760;
+                  // Playback area (video preview for video; audio banner else)
+                  final Widget playbackArea =
+                      (_controller != null && _controller!.value.isInitialized)
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              if (_isCurrentVideo)
+                                // Compact inline player: capped to ~42% of screen height
+                                // so the playlist below stays visible, with a button to
+                                // expand to fullscreen (the fullscreen page has its own
+                                // close button to collapse back).
+                                Center(
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight:
+                                          MediaQuery.of(context).size.height *
+                                          0.42,
+                                    ),
+                                    child: AspectRatio(
+                                      aspectRatio:
+                                          _controller!.value.aspectRatio > 0
+                                          ? _controller!.value.aspectRatio
+                                          : 16 / 9,
+                                      child: Stack(
+                                        children: [
+                                          Video(
+                                            controller:
+                                                _controller!.videoController,
+                                            controls: NoVideoControls,
+                                          ),
+                                          Positioned(
+                                            right: 4,
+                                            bottom: 4,
+                                            child: Material(
+                                              color: Colors.black45,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.fullscreen,
+                                                  color: Colors.white,
+                                                ),
+                                                tooltip: _t('fullscreen'),
+                                                onPressed: () => _goFullscreen(
+                                                  explicitEntry: true,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      tooltip: _t('fullscreen'),
-                                      onPressed: () =>
-                                          _goFullscreen(explicitEntry: true),
                                     ),
                                   ),
+                                )
+                              else
+                                Container(
+                                  height: 80,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.music_note),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _currentMediaPath != null
+                                              ? _basename(_currentMediaPath!)
+                                              : _t('audio'),
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        height: 80,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.blueGrey.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.music_note),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _currentMediaPath != null
-                                    ? _basename(_currentMediaPath!)
-                                    : _t('audio'),
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
+                              const SizedBox(height: 8),
+                              // Seek bar (scrubber) - forward-only (no backward scrubbing)
+                              ValueListenableBuilder<_PlaybackValue>(
+                                valueListenable: _controller!,
+                                builder: (context, value, _) {
+                                  final duration = value.duration;
+                                  final position = value.position;
+                                  final max = duration.inMilliseconds
+                                      .clamp(0, 1 << 31)
+                                      .toDouble();
+                                  final val = position.inMilliseconds
+                                      .clamp(0, duration.inMilliseconds)
+                                      .toDouble();
+                                  if (duration == Duration.zero) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Slider(
+                                    min: 0,
+                                    max: max <= 0 ? 1 : max,
+                                    value: val.isNaN ? 0 : val,
+                                    onChanged: (v) async {
+                                      // clamp backward scrubs to current position
+                                      final currentMs = position.inMilliseconds;
+                                      final target = v < currentMs
+                                          ? currentMs.toDouble()
+                                          : v;
+                                      await _controller!.seekTo(
+                                        Duration(milliseconds: target.toInt()),
+                                      );
+                                      setState(() {});
+                                    },
+                                  );
+                                },
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    // Seek bar (scrubber) - forward-only (no backward scrubbing)
-                    ValueListenableBuilder<_PlaybackValue>(
-                      valueListenable: _controller!,
-                      builder: (context, value, _) {
-                        final duration = value.duration;
-                        final position = value.position;
-                        final max = duration.inMilliseconds
-                            .clamp(0, 1 << 31)
-                            .toDouble();
-                        final val = position.inMilliseconds
-                            .clamp(0, duration.inMilliseconds)
-                            .toDouble();
-                        if (duration == Duration.zero) {
-                          return const SizedBox.shrink();
-                        }
-                        return Slider(
-                          min: 0,
-                          max: max <= 0 ? 1 : max,
-                          value: val.isNaN ? 0 : val,
-                          onChanged: (v) async {
-                            // clamp backward scrubs to current position
-                            final currentMs = position.inMilliseconds;
-                            final target = v < currentMs
-                                ? currentMs.toDouble()
-                                : v;
-                            await _controller!.seekTo(
-                              Duration(milliseconds: target.toInt()),
-                            );
-                            setState(() {});
-                          },
-                        );
-                      },
-                    ),
 
-                    // Basic transport controls
-                    ValueListenableBuilder<_PlaybackValue>(
-                      valueListenable: _controller!,
-                      builder: (context, value, _) {
-                        final position = value.position;
-                        final duration = value.duration;
-                        String fmt(Duration d) {
-                          String two(int n) => n.toString().padLeft(2, '0');
-                          final h = d.inHours;
-                          final m = d.inMinutes.remainder(60);
-                          final s = d.inSeconds.remainder(60);
-                          return h > 0
-                              ? '${two(h)}:${two(m)}:${two(s)}'
-                              : '${two(m)}:${two(s)}';
-                        }
+                              // Basic transport controls
+                              ValueListenableBuilder<_PlaybackValue>(
+                                valueListenable: _controller!,
+                                builder: (context, value, _) {
+                                  final position = value.position;
+                                  final duration = value.duration;
+                                  String fmt(Duration d) {
+                                    String two(int n) =>
+                                        n.toString().padLeft(2, '0');
+                                    final h = d.inHours;
+                                    final m = d.inMinutes.remainder(60);
+                                    final s = d.inSeconds.remainder(60);
+                                    return h > 0
+                                        ? '${two(h)}:${two(m)}:${two(s)}'
+                                        : '${two(m)}:${two(s)}';
+                                  }
 
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              tooltip: t('play'),
-                              icon: const Icon(Icons.play_arrow),
-                              onPressed: () async {
-                                if (!await _canPlayCurrent()) {
-                                  await _attemptAutoPlay(); // Will set proper error message
-                                  return;
-                                }
-                                if (!mounted) return;
-                                final name = _currentMediaId;
-                                if (name == null) return;
-                                final info = await _getPlayInfo(name);
-                                if (!mounted) return;
-                                final previewSec = _freePreviewFor(
-                                  name,
-                                ).inSeconds;
-                                final windowLeft = (info.max == null)
-                                    ? null
-                                    : (info.max! - info.used).clamp(
-                                        0,
-                                        info.max!,
-                                      );
-                                final lifetimeLeft = (info.maxTotal == null)
-                                    ? null
-                                    : (info.maxTotal! - info.totalPlays!).clamp(
-                                        0,
-                                        info.maxTotal!,
-                                      );
-                                // ignore: use_build_context_synchronously
-                                final confirmed =
-                                    await showDialog<bool>(
-                                      // ignore: use_build_context_synchronously
-                                      context: context,
-                                      builder: (ctx) {
-                                        String line1;
-                                        if (windowLeft != null &&
-                                            info.max != null) {
-                                          line1 = _t('confirm_window_left', {
-                                            'left': '$windowLeft',
-                                            'max': '${info.max!}',
-                                          });
-                                        } else {
-                                          line1 = _t(
-                                            'confirm_window_unlimited',
-                                          );
-                                        }
-                                        String line2;
-                                        if (lifetimeLeft != null &&
-                                            info.maxTotal != null) {
-                                          line2 = _t('confirm_lifetime_left', {
-                                            'left': '$lifetimeLeft',
-                                            'max': '${info.maxTotal!}',
-                                          });
-                                        } else {
-                                          line2 = _t(
-                                            'confirm_lifetime_unlimited',
-                                          );
-                                        }
-                                        final line3 = _t(
-                                          'confirm_preview_free',
-                                          {'seconds': '$previewSec'},
-                                        );
-                                        return AlertDialog(
-                                          title: Text(_t('confirm_play_title')),
-                                          content: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(line1),
-                                              const SizedBox(height: 4),
-                                              Text(line2),
-                                              const SizedBox(height: 8),
-                                              Text(line3),
-                                            ],
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(false),
-                                              child: Text(_t('cancel')),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(true),
-                                              child: Text(_t('start_playback')),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ) ??
-                                    false;
-                                if (!confirmed) return;
-                                _startPlaySession();
-                                _controller!.play();
-                                setState(() {});
-                              },
-                            ),
-                            IconButton(
-                              tooltip: t('pause'),
-                              icon: const Icon(Icons.pause),
-                              onPressed: () {
-                                _controller!.pause();
-                                setState(() {});
-                              },
-                            ),
-                            IconButton(
-                              tooltip: t('stop'),
-                              icon: const Icon(Icons.stop),
-                              onPressed: () async {
-                                await _stopAndCharge();
-                                setState(() {});
-                              },
-                            ),
-                            if (_isCurrentVideo) ...[
-                              const SizedBox(width: 8),
-                              IconButton(
-                                tooltip: t('fullscreen'),
-                                icon: const Icon(Icons.fullscreen),
-                                onPressed: () {
-                                  final ori = MediaQuery.of(
-                                    context,
-                                  ).orientation;
-                                  _goFullscreen(
-                                    explicitEntry: true,
-                                    initialOrientation: ori,
+                                  return Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      IconButton(
+                                        tooltip: t('play'),
+                                        icon: const Icon(Icons.play_arrow),
+                                        onPressed: () async {
+                                          if (!await _canPlayCurrent()) {
+                                            await _attemptAutoPlay(); // Will set proper error message
+                                            return;
+                                          }
+                                          if (!mounted) return;
+                                          final name = _currentMediaId;
+                                          if (name == null) return;
+                                          final info = await _getPlayInfo(name);
+                                          if (!mounted) return;
+                                          final previewSec = _freePreviewFor(
+                                            name,
+                                          ).inSeconds;
+                                          final windowLeft = (info.max == null)
+                                              ? null
+                                              : (info.max! - info.used).clamp(
+                                                  0,
+                                                  info.max!,
+                                                );
+                                          final lifetimeLeft =
+                                              (info.maxTotal == null)
+                                              ? null
+                                              : (info.maxTotal! -
+                                                        info.totalPlays!)
+                                                    .clamp(0, info.maxTotal!);
+                                          // ignore: use_build_context_synchronously
+                                          final confirmed =
+                                              await showDialog<bool>(
+                                                // ignore: use_build_context_synchronously
+                                                context: context,
+                                                builder: (ctx) {
+                                                  String line1;
+                                                  if (windowLeft != null &&
+                                                      info.max != null) {
+                                                    line1 = _t(
+                                                      'confirm_window_left',
+                                                      {
+                                                        'left': '$windowLeft',
+                                                        'max': '${info.max!}',
+                                                      },
+                                                    );
+                                                  } else {
+                                                    line1 = _t(
+                                                      'confirm_window_unlimited',
+                                                    );
+                                                  }
+                                                  String line2;
+                                                  if (lifetimeLeft != null &&
+                                                      info.maxTotal != null) {
+                                                    line2 = _t(
+                                                      'confirm_lifetime_left',
+                                                      {
+                                                        'left': '$lifetimeLeft',
+                                                        'max':
+                                                            '${info.maxTotal!}',
+                                                      },
+                                                    );
+                                                  } else {
+                                                    line2 = _t(
+                                                      'confirm_lifetime_unlimited',
+                                                    );
+                                                  }
+                                                  final line3 = _t(
+                                                    'confirm_preview_free',
+                                                    {'seconds': '$previewSec'},
+                                                  );
+                                                  return AlertDialog(
+                                                    title: Text(
+                                                      _t('confirm_play_title'),
+                                                    ),
+                                                    content: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(line1),
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(line2),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Text(line3),
+                                                      ],
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                              ctx,
+                                                            ).pop(false),
+                                                        child: Text(
+                                                          _t('cancel'),
+                                                        ),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                              ctx,
+                                                            ).pop(true),
+                                                        child: Text(
+                                                          _t('start_playback'),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              ) ??
+                                              false;
+                                          if (!confirmed) return;
+                                          _startPlaySession();
+                                          _controller!.play();
+                                          setState(() {});
+                                        },
+                                      ),
+                                      IconButton(
+                                        tooltip: t('pause'),
+                                        icon: const Icon(Icons.pause),
+                                        onPressed: () {
+                                          _controller!.pause();
+                                          setState(() {});
+                                        },
+                                      ),
+                                      IconButton(
+                                        tooltip: t('stop'),
+                                        icon: const Icon(Icons.stop),
+                                        onPressed: () async {
+                                          await _stopAndCharge();
+                                          setState(() {});
+                                        },
+                                      ),
+                                      if (_isCurrentVideo) ...[
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          tooltip: t('fullscreen'),
+                                          icon: const Icon(Icons.fullscreen),
+                                          onPressed: () {
+                                            final ori = MediaQuery.of(
+                                              context,
+                                            ).orientation;
+                                            _goFullscreen(
+                                              explicitEntry: true,
+                                              initialOrientation: ori,
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        '${fmt(position)} / ${fmt(duration)}',
+                                      ),
+                                    ],
                                   );
                                 },
                               ),
                             ],
-                            const SizedBox(width: 12),
-                            Text('${fmt(position)} / ${fmt(duration)}'),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              )
-            else if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              const SizedBox.shrink(),
+                          ),
+                        )
+                      : _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : const SizedBox.shrink();
+                  // Decrypted file list (playlist)
+                  final Widget playlist = _decryptedFiles.isEmpty
+                      ? Center(child: Text(t('no_decrypted_media_yet')))
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          itemCount: _decryptedFiles.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final file = _decryptedFiles[index];
+                            final name = _basename(file.path);
+                            final isVideo = _isVideoExtension(name);
+                            return FutureBuilder<_PlayInfo>(
+                              future: _getPlayInfo(name),
+                              builder: (context, snapshot) {
+                                final info = snapshot.data;
+                                String? subtitle;
+                                Widget? trailing;
+                                if (info != null) {
+                                  if (info.isPermanentlyLocked) {
+                                    trailing = const Icon(
+                                      Icons.lock,
+                                      color: Colors.redAccent,
+                                    );
+                                    subtitle = _t('ui_locked_reason', {
+                                      'reason': info.lockReason ?? '',
+                                    });
+                                  } else if (info.max == null) {
+                                    subtitle = _t('ui_no_play_limit');
+                                    trailing = const SizedBox.shrink();
+                                  } else {
+                                    final left = (info.max! - info.used).clamp(
+                                      0,
+                                      info.max!,
+                                    );
+                                    String totalInfo = '';
+                                    if (info.maxTotal != null) {
+                                      final totalLeft =
+                                          (info.maxTotal! - info.totalPlays!)
+                                              .clamp(0, info.maxTotal!);
+                                      totalInfo =
+                                          ' · $totalLeft / ${info.maxTotal}${_t('ui_total_suffix')}';
+                                    }
 
-            const SizedBox(height: 12),
-            // Decrypted file list
-            Expanded(
-              child: _decryptedFiles.isEmpty
-                  ? Center(child: Text(t('no_decrypted_media_yet')))
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      itemCount: _decryptedFiles.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final file = _decryptedFiles[index];
-                        final name = _basename(file.path);
-                        final isVideo = _isVideoExtension(name);
-                        return FutureBuilder<_PlayInfo>(
-                          future: _getPlayInfo(name),
-                          builder: (context, snapshot) {
-                            final info = snapshot.data;
-                            String? subtitle;
-                            Widget? trailing;
-                            if (info != null) {
-                              if (info.isPermanentlyLocked) {
-                                trailing = const Icon(
-                                  Icons.lock,
-                                  color: Colors.redAccent,
-                                );
-                                subtitle = _t('ui_locked_reason', {
-                                  'reason': info.lockReason ?? '',
-                                });
-                              } else if (info.max == null) {
-                                subtitle = _t('ui_no_play_limit');
-                                trailing = const SizedBox.shrink();
-                              } else {
-                                final left = (info.max! - info.used).clamp(
-                                  0,
-                                  info.max!,
-                                );
-                                String totalInfo = '';
-                                if (info.maxTotal != null) {
-                                  final totalLeft =
-                                      (info.maxTotal! - info.totalPlays!).clamp(
-                                        0,
-                                        info.maxTotal!,
+                                    if (left > 0) {
+                                      final resetStr =
+                                          (info.remaining != null &&
+                                              info.remaining! > Duration.zero)
+                                          ? _t('ui_resets_in', {
+                                              'duration': _fmtDur(
+                                                info.remaining!,
+                                              ),
+                                            })
+                                          : '';
+                                      subtitle =
+                                          '$left / ${info.max}${_t('ui_plays_left')}$resetStr$totalInfo';
+                                      trailing = const SizedBox.shrink();
+                                    } else {
+                                      final resetStr =
+                                          (info.remaining != null &&
+                                              info.remaining! > Duration.zero)
+                                          ? _t('ui_resets_in', {
+                                              'duration': _fmtDur(
+                                                info.remaining!,
+                                              ),
+                                            })
+                                          : '';
+                                      subtitle = _t('ui_blocked') + resetStr;
+                                      trailing = const Icon(
+                                        Icons.lock,
+                                        color: Colors.redAccent,
                                       );
-                                  totalInfo =
-                                      ' · $totalLeft / ${info.maxTotal}${_t('ui_total_suffix')}';
+                                    }
+                                  }
                                 }
-
-                                if (left > 0) {
-                                  final resetStr =
-                                      (info.remaining != null &&
-                                          info.remaining! > Duration.zero)
-                                      ? _t('ui_resets_in', {
-                                          'duration': _fmtDur(info.remaining!),
-                                        })
-                                      : '';
-                                  subtitle =
-                                      '$left / ${info.max}${_t('ui_plays_left')}$resetStr$totalInfo';
-                                  trailing = const SizedBox.shrink();
-                                } else {
-                                  final resetStr =
-                                      (info.remaining != null &&
-                                          info.remaining! > Duration.zero)
-                                      ? _t('ui_resets_in', {
-                                          'duration': _fmtDur(info.remaining!),
-                                        })
-                                      : '';
-                                  subtitle = _t('ui_blocked') + resetStr;
-                                  trailing = const Icon(
-                                    Icons.lock,
-                                    color: Colors.redAccent,
-                                  );
-                                }
-                              }
-                            }
-                            return ListTile(
-                              leading: Icon(
-                                isVideo
-                                    ? Icons.movie
-                                    : Icons.audio_file_outlined,
-                              ),
-                              title: Text(
-                                name,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: subtitle != null
-                                  ? Text(subtitle)
-                                  : null,
-                              onTap: () =>
-                                  _initializePlayer(file.path, autoPlay: false),
-                              trailing: trailing,
+                                return ListTile(
+                                  leading: Icon(
+                                    isVideo
+                                        ? Icons.movie
+                                        : Icons.audio_file_outlined,
+                                  ),
+                                  title: Text(
+                                    name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: subtitle != null
+                                      ? Text(subtitle)
+                                      : null,
+                                  onTap: () => _initializePlayer(
+                                    file.path,
+                                    autoPlay: false,
+                                  ),
+                                  trailing: trailing,
+                                );
+                              },
                             );
                           },
                         );
-                      },
-                    ),
+                  return wideLayout
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: SingleChildScrollView(child: playbackArea),
+                            ),
+                            const VerticalDivider(width: 1),
+                            Expanded(flex: 2, child: playlist),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            playbackArea,
+                            const SizedBox(height: 12),
+                            Expanded(child: playlist),
+                          ],
+                        );
+                },
+              ),
             ),
           ],
         ),
@@ -5090,7 +5158,10 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                 aspectRatio: c.value.isInitialized && c.value.aspectRatio > 0
                     ? c.value.aspectRatio
                     : 16 / 9,
-                child: Video(controller: c.videoController, controls: NoVideoControls),
+                child: Video(
+                  controller: c.videoController,
+                  controls: NoVideoControls,
+                ),
               ),
             ),
             Positioned(
@@ -5121,7 +5192,9 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                         children: [
                           IconButton(
                             icon: Icon(
-                              isPlaying ? Icons.pause_circle : Icons.play_circle,
+                              isPlaying
+                                  ? Icons.pause_circle
+                                  : Icons.play_circle,
                               color: Colors.white,
                               size: 40,
                             ),
