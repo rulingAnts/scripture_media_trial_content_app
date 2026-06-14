@@ -1,0 +1,59 @@
+# nfpm config — builds the Linux .deb AND .rpm for the Scripture Media Player
+# from one definition (https://nfpm.goreleaser.com/).
+#
+# The package ships the Flutter Linux bundle to /opt/scripture-app, installs the
+# launcher + MIME type, and the post-install scriptlet refreshes the desktop/MIME
+# databases so opening a *.smbundle launches the player (the file association).
+#
+# Build (run from repo root, after `flutter build linux --release`).
+# NOTE: nfpm expands ${ENV} in scalar fields (arch/version) but NOT in the
+# contents 'src' glob, so the bundle is STAGED to a fixed path first:
+#   rm -rf dist/stage && mkdir -p dist/stage
+#   # amd64 build output dir is x64; arm64 is arm64:
+#   cp -r mobile_app/build/linux/x64/release/bundle dist/stage/bundle
+#   PKG_ARCH=amd64 PKG_VERSION=1.1.0 \
+#     nfpm package -f mobile_app/packaging/linux/nfpm.yaml -p deb -t dist/
+#   PKG_ARCH=amd64 PKG_VERSION=1.1.0 \
+#     nfpm package -f mobile_app/packaging/linux/nfpm.yaml -p rpm -t dist/
+#   # arm64: cp -r mobile_app/build/linux/arm64/release/bundle dist/stage/bundle; PKG_ARCH=arm64 ...
+name: scripture-media-player
+arch: ${PKG_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+section: sound
+priority: optional
+maintainer: Scripture Media Team <noreply@example.org>
+vendor: Scripture Media Team
+homepage: https://github.com/rulingAnts/scripture_media_trial_content_app
+license: Proprietary
+description: |
+  Scripture Media trial player.
+  Plays device-locked .smbundle content packages (audio/video) on the desktop.
+
+contents:
+  # The whole Flutter Linux bundle (binary + lib/ + data/) under /opt.
+  # Staged to a fixed path first (nfpm does NOT env-expand the src glob):
+  # the build copies build/linux/<arch>/release/bundle -> dist/stage/bundle.
+  - src: ./dist/stage/bundle
+    dst: /opt/scripture-app
+  # Launcher (registers the app + declares the MimeType).
+  - src: ./mobile_app/packaging/linux/scripture-media-player.desktop
+    dst: /usr/share/applications/scripture-media-player.desktop
+  # MIME type definition for *.smbundle.
+  - src: ./mobile_app/packaging/linux/scripture-media.xml
+    dst: /usr/share/mime/packages/scripture-media.xml
+
+scripts:
+  postinstall: ./mobile_app/packaging/linux/postinstall.sh
+  postremove: ./mobile_app/packaging/linux/postremove.sh
+
+overrides:
+  deb:
+    depends:
+      # libmpv2 on Debian 13 / Ubuntu 24.04+, libmpv1 on older releases.
+      # libmpv pulls in its own codec deps transitively.
+      - libmpv2 | libmpv1
+  rpm:
+    depends:
+      # Soname dependency — rpm resolves it to mpv-libs/libmpv2/etc per distro.
+      - libmpv.so.2()(64bit)

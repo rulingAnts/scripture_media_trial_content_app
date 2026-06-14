@@ -1,0 +1,100 @@
+name: Build Linux packages (.deb / .rpm)
+
+# Builds the Scripture Media Player Flutter Linux app and packages it as .deb and
+# .rpm for x86_64 (amd64) and arm64 using nfpm. The packages ship the bundle to
+# /opt/scripture-app, install the launcher + MIME type, and their post-install
+# registers the *.smbundle file association. See mobile_app/packaging/linux/.
+#
+# Push a tag like v1.1.0 to build + attach packages to a GitHub Release, or run
+# manually (Actions tab -> Run workflow) to build + download them as artifacts.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            pkg_arch: amd64
+            flutter_arch: x64
+          - runner: ubuntu-24.04-arm
+            pkg_arch: arm64
+            flutter_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build + media_kit deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev \
+            libmpv-dev mpv
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Build Flutter Linux release
+        working-directory: mobile_app
+        run: |
+          flutter --version
+          flutter config --enable-linux-desktop
+          flutter pub get
+          flutter build linux --release
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install nfpm
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Determine version
+        id: ver
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            V="${{ github.ref_name }}"; V="${V#v}"
+          else
+            V="$(grep -m1 '^version:' mobile_app/pubspec.yaml | sed 's/version:[[:space:]]*//; s/+.*//')"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Packaging version $V"
+
+      - name: Build .deb and .rpm (nfpm)
+        env:
+          PKG_ARCH: ${{ matrix.pkg_arch }}
+          PKG_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          rm -rf dist/stage && mkdir -p dist/stage dist
+          # nfpm does not env-expand the contents 'src' glob, so stage to a fixed path.
+          cp -r "mobile_app/build/linux/${{ matrix.flutter_arch }}/release/bundle" dist/stage/bundle
+          nfpm package -f mobile_app/packaging/linux/nfpm.yaml -p deb -t dist/
+          nfpm package -f mobile_app/packaging/linux/nfpm.yaml -p rpm -t dist/
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scripture-media-player-${{ matrix.pkg_arch }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+
+      - name: Attach to release (tags only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.deb
+            dist/*.rpm
