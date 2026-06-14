@@ -2333,12 +2333,11 @@ class _MyHomePageState extends State<MyHomePage> {
   // not the app's working directory (e.g. /opt/...). Null on mobile (the
   // platform document picker ignores it).
   String? get _initialPickerDir {
-    if (Platform.isLinux || Platform.isMacOS) {
-      return Platform.environment['HOME'];
-    }
-    if (Platform.isWindows) {
-      return Platform.environment['USERPROFILE'];
-    }
+    // macOS: don't force a start dir — the app is sandboxed, so HOME is the
+    // useless container path; let the open panel (powerbox) default to a real
+    // location the user can navigate from.
+    if (Platform.isLinux) return Platform.environment['HOME'];
+    if (Platform.isWindows) return Platform.environment['USERPROFILE'];
     return null;
   }
 
