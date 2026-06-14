@@ -1,0 +1,55 @@
+name: Build macOS app (test)
+
+# Builds the Scripture Media Player as a macOS .app so it can be tested on a
+# real-GPU Mac (the Parallels Linux VMs only have software GL, which renders
+# media_kit video black — see mobile_app/lib/main.dart). The .app is UNSIGNED
+# (CI has no Developer ID), so after downloading: remove the quarantine flag
+#   xattr -dr com.apple.quarantine "Scripture Media Player.app"
+# then open it (or right-click -> Open).
+#
+# Run it from the Actions tab -> "Build macOS app (test)" -> Run workflow
+# (downloads as an artifact), or push a v* tag to attach it to the Release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest   # Apple Silicon (arm64), matches Seth's M3 Mac
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Build macOS .app
+        working-directory: mobile_app
+        run: |
+          flutter --version
+          flutter config --enable-macos-desktop
+          flutter pub get
+          flutter build macos --release
+
+      - name: Zip the .app (ditto preserves the bundle)
+        working-directory: mobile_app/build/macos/Build/Products/Release
+        run: |
+          APP="$(ls -d *.app | head -1)"
+          echo "Packaging: $APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$GITHUB_WORKSPACE/scripture-media-player-macos-arm64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scripture-media-player-macos-arm64
+          path: scripture-media-player-macos-arm64.zip
+
+      - name: Attach to release (tags only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: scripture-media-player-macos-arm64.zip
