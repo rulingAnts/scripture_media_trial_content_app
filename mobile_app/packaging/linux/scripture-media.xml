@@ -5,7 +5,12 @@
   <mime-type type="application/x-smbundle">
     <comment>Scripture Media bundle</comment>
     <comment xml:lang="id">Paket Media Kitab Suci</comment>
-    <glob pattern="*.smbundle"/>
+    <!-- A .smbundle IS a gzip archive, so gzip magic-detection would otherwise
+         win over the glob and the file would open in an archive manager. Declare
+         it a subclass of gzip (so the more-specific type wins for *.smbundle) and
+         give the glob a high weight to beat the gzip magic rule. -->
+    <sub-class-of type="application/gzip"/>
+    <glob pattern="*.smbundle" weight="80"/>
     <icon name="scripture-media-player"/>
   </mime-type>
 </mime-info>
