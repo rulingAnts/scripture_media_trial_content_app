@@ -1886,16 +1886,18 @@ class _MediaPlayerController extends ValueNotifier<_PlaybackValue> {
   _MediaPlayerController() : super(const _PlaybackValue());
 
   final Player player = Player();
-  // NOTE: media_kit renders video into a Flutter texture via GL interop, which
-  // needs a REAL GPU. On software-GL systems (llvmpipe — the Parallels test VMs)
-  // the video texture is BLACK while audio/timeline run fine (plain mpv still
-  // renders there because it uses its own GL window). On real-GPU hardware (the
-  // ThinkPad) it renders normally. enableHardwareAcceleration:false does NOT
-  // help (it only affects decode), so we keep the default.
+  // The video output (VideoController) MUST exist BEFORE media is opened —
+  // otherwise media_kit never attaches it to the already-opened player and no
+  // video frames flow => BLACK video with working audio on EVERY platform
+  // (this was previously misdiagnosed as a software-GL/llvmpipe issue).
+  // initialize() forces this `late final` to be created before player.open().
   late final VideoController videoController = VideoController(player);
   final List<StreamSubscription<dynamic>> _subs = [];
 
   Future<void> initialize(String path) async {
+    // Create the video output BEFORE opening media (see note above) so media_kit
+    // attaches it and actually produces video frames; otherwise video is black.
+    final _ = videoController;
     _subs.add(player.stream.position.listen((p) {
       value = value.copyWith(position: p);
     }));
