@@ -169,6 +169,10 @@ desktop-app/dist
 # VS Code
 .vscode/
 
+# JetBrains IDEs (Android Studio / IntelliJ)
+.idea/
+*.iml
+
 # Android / Gradle (generic)
 **/.gradle/
 **/local.properties

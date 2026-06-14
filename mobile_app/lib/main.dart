@@ -10,7 +10,8 @@ import 'package:flutter/services.dart'
     show PlatformException, Clipboard, ClipboardData;
 import 'package:flutter/services.dart' as services;
 import 'package:flutter/foundation.dart' show SynchronousFuture;
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
@@ -19,6 +20,7 @@ import 'package:pointycastle/export.dart' as pc;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:window_manager/window_manager.dart';
 
 // Global app key to allow changing locale from settings page
 final GlobalKey<_MyAppState> _myAppKey = GlobalKey<_MyAppState>();
@@ -175,7 +177,27 @@ Map<String, Uint8List> _evpBytesToKeyStatic(
   return {'key': key, 'iv': iv};
 }
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
+  // Desktop: init window_manager so fullscreen can cover the panel/taskbar,
+  // and give a sensible default window that fits small (1024x768) screens
+  // but launches maximized.
+  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+    try {
+      await windowManager.ensureInitialized();
+      const windowOptions = WindowOptions(
+        size: Size(900, 640), // un-maximized default; fits a 1024x768 panel
+        minimumSize: Size(640, 480),
+        center: true,
+        title: 'Scripture Media Player',
+      );
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.maximize(); // launch maximized
+        await windowManager.show();
+      });
+    } catch (_) {}
+  }
   runApp(MyApp(key: _myAppKey));
 }
 
@@ -1770,9 +1792,85 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+class _PlaybackValue {
+  final Duration position;
+  final Duration duration;
+  final bool isPlaying;
+  final bool isInitialized;
+  final double aspectRatio;
+
+  const _PlaybackValue({
+    this.position = Duration.zero,
+    this.duration = Duration.zero,
+    this.isPlaying = false,
+    this.isInitialized = false,
+    this.aspectRatio = 16 / 9,
+  });
+
+  _PlaybackValue copyWith({
+    Duration? position,
+    Duration? duration,
+    bool? isPlaying,
+    bool? isInitialized,
+    double? aspectRatio,
+  }) {
+    return _PlaybackValue(
+      position: position ?? this.position,
+      duration: duration ?? this.duration,
+      isPlaying: isPlaying ?? this.isPlaying,
+      isInitialized: isInitialized ?? this.isInitialized,
+      aspectRatio: aspectRatio ?? this.aspectRatio,
+    );
+  }
+}
+
+// Thin adapter over media_kit's Player/VideoController exposing the subset
+// of VideoPlayerController's API (ValueListenable<_PlaybackValue>, play,
+// pause, seekTo, dispose) that the existing player UI relies on.
+class _MediaPlayerController extends ValueNotifier<_PlaybackValue> {
+  _MediaPlayerController() : super(const _PlaybackValue());
+
+  final Player player = Player();
+  late final VideoController videoController = VideoController(player);
+  final List<StreamSubscription<dynamic>> _subs = [];
+
+  Future<void> initialize(String path) async {
+    _subs.add(player.stream.position.listen((p) {
+      value = value.copyWith(position: p);
+    }));
+    _subs.add(player.stream.duration.listen((d) {
+      value = value.copyWith(duration: d);
+    }));
+    _subs.add(player.stream.playing.listen((p) {
+      value = value.copyWith(isPlaying: p);
+    }));
+    _subs.add(player.stream.videoParams.listen((params) {
+      final aspect = params.aspect;
+      if (aspect != null && aspect > 0) {
+        value = value.copyWith(aspectRatio: aspect);
+      }
+    }));
+    await player.open(Media(path), play: false);
+    value = value.copyWith(isInitialized: true);
+  }
+
+  Future<void> play() => player.play();
+  Future<void> pause() => player.pause();
+  Future<void> seekTo(Duration position) => player.seek(position);
+
+  @override
+  void dispose() {
+    for (final sub in _subs) {
+      sub.cancel();
+    }
+    unawaited(player.dispose());
+    super.dispose();
+  }
+}
+
 class _MyHomePageState extends State<MyHomePage> {
   String _deviceId = 'Unknown';
-  VideoPlayerController? _controller;
+  _MediaPlayerController? _controller;
   Map<String, dynamic>? _bundleConfig;
   String _status = L10n.t(
     'status_initial',
@@ -1830,7 +1928,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // Track last saved position (ms) to throttle persistence
   int _lastSavedPosMs = 0;
   // Stream subscriptions for receiving shared files
-  late StreamSubscription<List<SharedMediaFile>> _intentDataStreamSubscription;
+  StreamSubscription<List<SharedMediaFile>>? _intentDataStreamSubscription;
   // UI ticker to refresh countdowns in list and headers
   Timer? _uiTicker;
   // Verbose import logging
@@ -1858,7 +1956,9 @@ class _MyHomePageState extends State<MyHomePage> {
     _getDeviceId();
     _loadLastPlayed();
     _configureAudioSession();
-    _initReceiveSharingIntent();
+    if (Platform.isAndroid || Platform.isIOS) {
+      _initReceiveSharingIntent();
+    }
     // Start a lightweight UI ticker so countdowns update live
     _uiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -2041,6 +2141,15 @@ class _MyHomePageState extends State<MyHomePage> {
       } else if (Platform.isIOS) {
         final ios = await deviceInfo.iosInfo;
         deviceId = ios.identifierForVendor;
+      } else if (Platform.isLinux) {
+        final linux = await deviceInfo.linuxInfo;
+        deviceId = linux.machineId; // /etc/machine-id, stable per install
+      } else if (Platform.isMacOS) {
+        final mac = await deviceInfo.macOsInfo;
+        deviceId = mac.systemGUID; // IOPlatformUUID, stable per machine
+      } else if (Platform.isWindows) {
+        final windows = await deviceInfo.windowsInfo;
+        deviceId = windows.deviceId; // registry MachineGuid, stable per install
       }
     } catch (_) {}
     if (!mounted) return;
@@ -2112,6 +2221,19 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  // Default the import file picker to the user's home directory on desktop,
+  // not the app's working directory (e.g. /opt/...). Null on mobile (the
+  // platform document picker ignores it).
+  String? get _initialPickerDir {
+    if (Platform.isLinux || Platform.isMacOS) {
+      return Platform.environment['HOME'];
+    }
+    if (Platform.isWindows) {
+      return Platform.environment['USERPROFILE'];
+    }
+    return null;
+  }
+
   Future<void> _pickAndProcessBundle() async {
     setState(() {
       _isLoading = true;
@@ -2126,12 +2248,16 @@ class _MyHomePageState extends State<MyHomePage> {
         result = await FilePicker.platform.pickFiles(
           type: FileType.custom,
           allowedExtensions: ['smbundle'],
+          initialDirectory: _initialPickerDir,
         );
       } on PlatformException {
         // Some Android document providers don't support custom filters.
         // Fall back to allowing any file and validate the extension ourselves.
         setState(() => _status = _t('status_file_filter_unsupported'));
-        result = await FilePicker.platform.pickFiles(type: FileType.any);
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.any,
+          initialDirectory: _initialPickerDir,
+        );
       }
       if (result == null || result.files.single.path == null) {
         setState(() => _status = _t('status_file_picking_cancelled'));
@@ -2780,8 +2906,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _finalizePlaySession();
     _controller?.dispose();
     _currentMediaPath = mediaPath;
-    _controller = VideoPlayerController.file(File(mediaPath))
-      ..initialize().then((_) {
+    _controller = _MediaPlayerController()
+      ..initialize(mediaPath).then((_) {
         if (!mounted) return;
         // Attach listeners for position persistence and natural-end charging
         _attachControllerListeners();
@@ -2803,6 +2929,15 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_inFullscreen) return;
     _inFullscreen = true;
     _lastFullscreenTriggerAt = DateTime.now();
+    final isDesktop =
+        Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+    // Desktop: true OS fullscreen so the window covers the panel/taskbar
+    // (and tint2 on the kiosk), keeping the controls visible.
+    if (isDesktop) {
+      try {
+        await windowManager.setFullScreen(true);
+      } catch (_) {}
+    }
     try {
       await services.SystemChrome.setEnabledSystemUIMode(
         services.SystemUiMode.immersiveSticky,
@@ -2846,6 +2981,12 @@ class _MyHomePageState extends State<MyHomePage> {
       // Short cooldown to avoid bounce on immediate orientation callbacks
       _lastFullscreenTriggerAt = DateTime.now();
     } catch (_) {}
+
+    if (isDesktop) {
+      try {
+        await windowManager.setFullScreen(false);
+      } catch (_) {}
+    }
 
     try {
       await services.SystemChrome.setEnabledSystemUIMode(
@@ -4048,7 +4189,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     _finalizePlaySession();
     _controller?.dispose();
-    _intentDataStreamSubscription.cancel();
+    _intentDataStreamSubscription?.cancel();
     _uiTicker?.cancel();
     super.dispose();
   }
@@ -4070,7 +4211,8 @@ class _MyHomePageState extends State<MyHomePage> {
       final recentlyTriggered =
           _lastFullscreenTriggerAt != null &&
           now.difference(_lastFullscreenTriggerAt!).inMilliseconds < 800;
-      if (isLandscape &&
+      if ((Platform.isAndroid || Platform.isIOS) &&
+          isLandscape &&
           _isCurrentVideo &&
           _controller?.value.isInitialized == true &&
           !_inFullscreen &&
@@ -4312,9 +4454,47 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   children: [
                     if (_isCurrentVideo)
-                      AspectRatio(
-                        aspectRatio: _controller!.value.aspectRatio,
-                        child: VideoPlayer(_controller!),
+                      // Compact inline player: capped to ~42% of screen height
+                      // so the playlist below stays visible, with a button to
+                      // expand to fullscreen (the fullscreen page has its own
+                      // close button to collapse back).
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight:
+                                MediaQuery.of(context).size.height * 0.42,
+                          ),
+                          child: AspectRatio(
+                            aspectRatio: _controller!.value.aspectRatio > 0
+                                ? _controller!.value.aspectRatio
+                                : 16 / 9,
+                            child: Stack(
+                              children: [
+                                Video(
+                                  controller: _controller!.videoController,
+                                  controls: NoVideoControls,
+                                ),
+                                Positioned(
+                                  right: 4,
+                                  bottom: 4,
+                                  child: Material(
+                                    color: Colors.black45,
+                                    shape: const CircleBorder(),
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.fullscreen,
+                                        color: Colors.white,
+                                      ),
+                                      tooltip: _t('fullscreen'),
+                                      onPressed: () =>
+                                          _goFullscreen(explicitEntry: true),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       )
                     else
                       Container(
@@ -4343,7 +4523,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     const SizedBox(height: 8),
                     // Seek bar (scrubber) - forward-only (no backward scrubbing)
-                    ValueListenableBuilder<VideoPlayerValue>(
+                    ValueListenableBuilder<_PlaybackValue>(
                       valueListenable: _controller!,
                       builder: (context, value, _) {
                         final duration = value.duration;
@@ -4377,7 +4557,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
 
                     // Basic transport controls
-                    ValueListenableBuilder<VideoPlayerValue>(
+                    ValueListenableBuilder<_PlaybackValue>(
                       valueListenable: _controller!,
                       builder: (context, value, _) {
                         final position = value.position;
@@ -4669,7 +4849,7 @@ class LanguageSettingsPage extends StatefulWidget {
 }
 
 class _FullscreenVideoPage extends StatefulWidget {
-  final VideoPlayerController controller;
+  final _MediaPlayerController controller;
   final bool explicitEntry;
   final Orientation initialOrientation;
   const _FullscreenVideoPage({
@@ -4732,7 +4912,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                 aspectRatio: c.value.isInitialized && c.value.aspectRatio > 0
                     ? c.value.aspectRatio
                     : 16 / 9,
-                child: VideoPlayer(c),
+                child: Video(controller: c.videoController, controls: NoVideoControls),
               ),
             ),
             Positioned(
@@ -4744,33 +4924,40 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
               ),
             ),
             Positioned(
-              bottom: 16,
+              bottom: 24,
               left: 0,
               right: 0,
               child: Center(
-                child: ValueListenableBuilder<VideoPlayerValue>(
+                child: ValueListenableBuilder<_PlaybackValue>(
                   valueListenable: c,
                   builder: (context, value, _) {
                     final isPlaying = value.isPlaying;
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            isPlaying ? Icons.pause_circle : Icons.play_circle,
-                            color: Colors.white,
-                            size: 36,
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isPlaying ? Icons.pause_circle : Icons.play_circle,
+                              color: Colors.white,
+                              size: 40,
+                            ),
+                            onPressed: () async {
+                              if (isPlaying) {
+                                await c.pause();
+                              } else {
+                                await c.play();
+                              }
+                              setState(() {});
+                            },
                           ),
-                          onPressed: () async {
-                            if (isPlaying) {
-                              await c.pause();
-                            } else {
-                              await c.play();
-                            }
-                            setState(() {});
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     );
                   },
                 ),
