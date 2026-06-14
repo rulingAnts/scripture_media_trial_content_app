@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WiX v4/v5 installer for the Scripture Media Player (Windows, x64).
+
+     The CI workflow (.github/workflows/build-windows.yml) stages the Flutter
+     build output next to this file as .\publish\ and copies app_icon.ico here,
+     then:
+       wix build Package.wxs -d Version=1.3.0 -o scripture-media-player_<v>_windows_x64.msi
+
+     The MSI installs the app to "Program Files\Scripture Media Player", adds a
+     Start-menu shortcut, and registers the *.smbundle file association so a
+     double-clicked bundle opens the player (same as the Linux .desktop/MIME). -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="Scripture Media Player"
+      Manufacturer="Scripture Media Team"
+      Version="$(Version)"
+      UpgradeCode="7E9C2F1A-3B4D-4E5F-9A8B-1C2D3E4F5A6B"
+      Scope="perMachine"
+      Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="app_icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Scripture Media Player" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="Scripture Media Player" />
+    </StandardDirectory>
+
+    <!-- The whole Flutter Windows bundle (mobile_app.exe + DLLs + data\). -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="publish\**" />
+    </ComponentGroup>
+
+    <!-- Start-menu shortcut. -->
+    <Component Id="StartMenuShortcut" Directory="AppMenuFolder" Guid="*">
+      <Shortcut Id="AppShortcut"
+                Name="Scripture Media Player"
+                Target="[INSTALLFOLDER]mobile_app.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="AppIcon" />
+      <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKMU"
+                     Key="Software\ScriptureMediaTeam\ScriptureMediaPlayer"
+                     Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <!-- *.smbundle file association (double-click opens the player). -->
+    <Component Id="FileAssociation" Directory="INSTALLFOLDER" Guid="*">
+      <RegistryValue Root="HKLM" Key="Software\Classes\.smbundle"
+                     Value="ScriptureMedia.Bundle" Type="string" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\ScriptureMedia.Bundle"
+                     Value="Scripture Media bundle" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\ScriptureMedia.Bundle\DefaultIcon"
+                     Value="[INSTALLFOLDER]mobile_app.exe,0" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\ScriptureMedia.Bundle\shell\open\command"
+                     Value="&quot;[INSTALLFOLDER]mobile_app.exe&quot; &quot;%1&quot;" Type="string" />
+    </Component>
+
+    <Feature Id="Main" Title="Scripture Media Player" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="FileAssociation" />
+    </Feature>
+  </Package>
+</Wix>

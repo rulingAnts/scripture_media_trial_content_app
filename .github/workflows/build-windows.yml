@@ -1,0 +1,78 @@
+name: Build Windows installer (.msi)
+
+# Builds the Scripture Media Player as a Windows x64 .msi (WiX) in two modes:
+#  - Run manually (Actions tab -> "Build Windows installer (.msi)" -> Run
+#    workflow): builds the .msi and uploads it as a downloadable ARTIFACT on the
+#    run page. NO release is created — use this to dial in packaging first.
+#  - Push a v* tag: builds the .msi AND attaches it to the GitHub Release.
+#
+# The .msi is UNSIGNED (no code-signing cert), so Windows SmartScreen may warn on
+# first run; it still installs (silent/managed installs are unaffected).
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Build Flutter Windows release
+        working-directory: mobile_app
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
+
+      - name: Determine version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            V="${{ github.ref_name }}"; V="${V#v}"
+          else
+            V="$(grep -m1 '^version:' mobile_app/pubspec.yaml | sed 's/version:[[:space:]]*//; s/+.*//')"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Packaging version $V"
+
+      - name: Stage build output + packaging files
+        shell: bash
+        run: |
+          rm -rf dist && mkdir -p dist/publish
+          cp -r mobile_app/build/windows/x64/runner/Release/* dist/publish/
+          cp mobile_app/packaging/windows/Package.wxs dist/
+          cp mobile_app/windows/runner/resources/app_icon.ico dist/
+
+      - name: Install WiX
+        run: dotnet tool install --global wix
+
+      - name: Build .msi (WiX)
+        shell: bash
+        working-directory: dist
+        run: |
+          wix build Package.wxs \
+            -d Version=${{ steps.ver.outputs.version }} \
+            -o "scripture-media-player_${{ steps.ver.outputs.version }}_windows_x64.msi"
+          ls -la *.msi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scripture-media-player_windows_x64_msi
+          path: dist/*.msi
+
+      - name: Attach to release (tags only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.msi
