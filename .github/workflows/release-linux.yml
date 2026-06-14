@@ -40,14 +40,19 @@ jobs:
             libgtk-3-dev liblzma-dev \
             libmpv-dev mpv
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+      # Flutter has no prebuilt Linux-arm64 SDK archive, so subosito's
+      # archive-based install fails on arm64 ("Unable to determine Flutter
+      # version ... architecture: arm64"). Install via git clone instead — it
+      # bootstraps the right engine artifacts per arch and works on amd64 + arm64.
+      - name: Install Flutter (git clone)
+        run: |
+          git clone --depth 1 -b stable https://github.com/flutter/flutter.git "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+          "$HOME/flutter/bin/flutter" --version
 
       - name: Build Flutter Linux release
         working-directory: mobile_app
         run: |
-          flutter --version
           flutter config --enable-linux-desktop
           flutter pub get
           flutter build linux --release
