@@ -87,12 +87,14 @@ jobs:
           cp -r "mobile_app/build/linux/${{ matrix.flutter_arch }}/release/bundle" dist/stage/bundle
           nfpm package -f mobile_app/packaging/linux/nfpm.yaml -p deb -t dist/
           nfpm package -f mobile_app/packaging/linux/nfpm.yaml -p rpm -t dist/
-          # Make it obvious these are Linux packages: insert "linux" into the
-          # filenames (e.g. scripture-media-player_linux_1.3.0_amd64.deb). The
-          # filename does not affect dpkg/rpm install — they read the metadata.
-          for f in dist/*.deb dist/*.rpm; do
-            mv "$f" "$(echo "$f" | sed -E 's#(scripture-media-player)([-_])#\1\2linux\2#')"
-          done
+          # Consistent naming across platforms:
+          #   scripture-media-player_<version>_<os>_<arch>.<ext>
+          # (arch keeps each ecosystem's convention: deb amd64/arm64, rpm
+          # x86_64/aarch64). Filenames don't affect dpkg/rpm install.
+          mv dist/*.deb "dist/scripture-media-player_${PKG_VERSION}_linux_${PKG_ARCH}.deb"
+          rpm="$(ls dist/*.rpm)"
+          rpmarch="$(basename "$rpm" .rpm | sed -E 's/.*\.([^.]+)$/\1/')"
+          mv "$rpm" "dist/scripture-media-player_${PKG_VERSION}_linux_${rpmarch}.rpm"
           ls -la dist/
 
       - uses: actions/upload-artifact@v4

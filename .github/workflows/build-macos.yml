@@ -33,14 +33,22 @@ jobs:
           flutter pub get
           flutter build macos --release
 
+      - name: Determine version
+        id: ver
+        shell: bash
+        run: |
+          V="$(grep -m1 '^version:' mobile_app/pubspec.yaml | sed 's/version:[[:space:]]*//; s/+.*//')"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
       - name: Zip the .app (ditto preserves the bundle)
         working-directory: mobile_app/build/macos/Build/Products/Release
         run: |
           APP="$(ls -d *.app | head -1)"
           echo "Packaging: $APP"
-          ditto -c -k --sequesterRsrc --keepParent "$APP" "$GITHUB_WORKSPACE/scripture-media-player-macos-arm64.zip"
+          ZIP="scripture-media-player_${{ steps.ver.outputs.version }}_macos_arm64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$GITHUB_WORKSPACE/$ZIP"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: scripture-media-player-macos-arm64
-          path: scripture-media-player-macos-arm64.zip
+          name: scripture-media-player_macos_arm64
+          path: scripture-media-player_*_macos_arm64.zip
