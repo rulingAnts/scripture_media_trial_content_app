@@ -24,6 +24,16 @@ Marked as a **pre-release**: the Android APK is debug-signed and intended for te
 - CI: Windows `.msi`, Linux `.deb`/`.rpm` and the Android `.apk` are all attached to
   tag releases, and tag releases are published as pre-releases.
 
+### Fixed
+- Android build: pinned the Gradle wrapper to 8.14.3 by committing
+  `mobile_app/android/gradle/wrapper/gradle-wrapper.properties`. No wrapper was tracked,
+  so Flutter injected one from its SDK cache (Gradle 8.11.1) and the Android build broke
+  outright once Flutter began requiring Gradle 8.14.0+.
+- CI: release workflows pin Flutter to 3.47.0 instead of tracking `stable`. Stable moved
+  3.35.6 → 3.47.0 between these workflows being written and the v1.4.0 tag being pushed,
+  which is what broke the Android build at tag time. The macOS test workflow still tracks
+  `stable` deliberately, as an early warning for upstream changes.
+
 ### Known issues
 - **The Android APK is debug-signed.** CI generates a fresh debug keystore per run, so
   each build has a different signing certificate. Installing a newer build over an older

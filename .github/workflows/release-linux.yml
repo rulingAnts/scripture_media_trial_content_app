@@ -44,9 +44,11 @@ jobs:
       # archive-based install fails on arm64 ("Unable to determine Flutter
       # version ... architecture: arm64"). Install via git clone instead — it
       # bootstraps the right engine artifacts per arch and works on amd64 + arm64.
+      # Pinned to a tag rather than the stable branch — release builds must be
+      # reproducible. See the note in build-android.yml. Bump deliberately.
       - name: Install Flutter (git clone)
         run: |
-          git clone --depth 1 -b stable https://github.com/flutter/flutter.git "$HOME/flutter"
+          git clone --depth 1 -b 3.47.0 https://github.com/flutter/flutter.git "$HOME/flutter"
           echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
           "$HOME/flutter/bin/flutter" --version
 

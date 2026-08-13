@@ -36,9 +36,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Pinned, not 'stable'. Release builds must be reproducible: the v1.4.0 tag
+      # initially failed here because stable moved 3.35.6 -> 3.47.0 between the
+      # workflow being written and the tag being pushed, and the newer Flutter
+      # requires Gradle >= 8.14.0. Bump this deliberately, not by drift.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.0
 
       - name: Build APK (release, debug-signed, all ABIs)
         working-directory: mobile_app
