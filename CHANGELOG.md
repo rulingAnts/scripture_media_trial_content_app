@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No unreleased changes yet.
 
+## [1.4.0] - 2026-08-14
+
+First release to ship Android, Windows and Linux packages from a single tag.
+Marked as a **pre-release**: the Android APK is debug-signed and intended for testing.
+
+### Added
+- CI: the Android APK is now built on `v*` tags and attached to the GitHub Release
+  (previously it was a manual-run artifact only, so no release ever carried an APK).
+- User-facing website (`docs/index.html`), served from GitHub Pages — install and
+  usage guidance for people receiving bundles, plus notes for those preparing them.
+
+### Changed
+- CI: Windows `.msi`, Linux `.deb`/`.rpm` and the Android `.apk` are all attached to
+  tag releases, and tag releases are published as pre-releases.
+
+### Known issues
+- **The Android APK is debug-signed.** CI generates a fresh debug keystore per run, so
+  each build has a different signing certificate. Installing a newer build over an older
+  one fails with "App not installed" — uninstall first. Uninstalling clears imported
+  content and resets playback counters. A real upload keystore is required before a
+  stable release (see `docs/PLAY_STORE_ROADMAP.md` Phase 1).
+- The APK is a single ~95 MB universal binary covering all ABIs. Per-ABI splits would
+  cut this to roughly 35–40 MB per device.
+- macOS is built on demand only and is not attached to this release.
+
 ## [1.1.0] - 2025-11-01
 
 ### Added

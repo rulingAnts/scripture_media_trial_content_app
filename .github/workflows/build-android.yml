@@ -1,16 +1,29 @@
-name: Build Android APK (test)
+name: Build Android APK
 
-# Builds a release APK for sideloading onto a device/emulator for TESTING.
-# The release build is debug-signed (android/app/build.gradle.kts uses
-# signingConfigs.debug), so it installs on any device/AVD without a keystore.
-# Manual run only (not a release artifact) — download the .apk from the run page
-# and `adb install` it.
+# Builds a release APK for sideloading in two modes:
+#  - Run manually (Actions tab -> Run workflow): uploads the .apk as a
+#    downloadable ARTIFACT on the run page. No release is created.
+#  - Push a v* tag: builds the .apk AND attaches it to the GitHub Release.
+#
+# ⚠ SIGNING: the release build is currently DEBUG-SIGNED
+# (android/app/build.gradle.kts uses signingConfigs.debug). CI has no debug
+# keystore, so AGP generates a fresh random one on every run — meaning every
+# build carries a DIFFERENT certificate. Consequences:
+#   * Testers cannot update in place; Android rejects the install with
+#     "App not installed" and they must uninstall the old build first.
+#   * Uninstalling clears SharedPreferences, which is where seenBundleIds and
+#     all play counters live — so an update resets the playback limits.
+# This is tolerable for pre-release TEST builds only. Before any stable
+# release, add a real upload keystore (base64 in a repo secret) and a proper
+# release signingConfig. See docs/PLAY_STORE_ROADMAP.md Phase 1.
 
 on:
   workflow_dispatch:
+  push:
+    tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android:
@@ -37,8 +50,13 @@ jobs:
         id: ver
         shell: bash
         run: |
-          V="$(grep -m1 '^version:' mobile_app/pubspec.yaml | sed 's/version:[[:space:]]*//; s/+.*//')"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            V="${{ github.ref_name }}"; V="${V#v}"
+          else
+            V="$(grep -m1 '^version:' mobile_app/pubspec.yaml | sed 's/version:[[:space:]]*//; s/+.*//')"
+          fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Packaging version $V"
 
       - name: Stage APK with a consistent name
         shell: bash
@@ -52,3 +70,10 @@ jobs:
         with:
           name: scripture-media-player_android
           path: dist/*.apk
+
+      - name: Attach to release (tags only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: dist/*.apk

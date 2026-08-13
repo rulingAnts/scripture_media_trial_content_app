@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripture Media Player — Play trial scripture media on your phone</title>
+<meta name="description" content="A player for pre-approval scripture audio and video. Content is locked to your device, with play limits set by the person who sent it.">
+<meta name="theme-color" content="#2D5BFF">
+<style>
+  :root{
+    --ink:#1f2933; --muted:#66707a; --line:#e3e8ee; --bg:#ffffff;
+    --accent:#2D5BFF; --accent-soft:#eef2ff; --accent-dark:#1f3fbf;
+    --warn-bg:#fff6e6; --warn-line:#e0a72e;
+    --info-bg:#eef4fb; --info-line:#4a82c4;
+    --code-bg:#f4f6f8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:32px 20px 80px;}
+  h1{font-size:1.9rem; line-height:1.2; margin:.2em 0 .1em;}
+  h2{font-size:1.35rem; margin:2.2em 0 .6em; padding-top:.6em; border-top:1px solid var(--line);}
+  h3{font-size:1.08rem; margin:1.6em 0 .3em;}
+  p{margin:.5em 0;}
+  a{color:var(--accent);}
+  code{background:var(--code-bg); padding:.12em .38em; border-radius:4px; font-size:.9em;
+       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+  pre{background:var(--code-bg); padding:14px 16px; border-radius:8px; overflow-x:auto;
+      border:1px solid var(--line);}
+  pre code{background:none; padding:0;}
+  kbd{background:#fff; border:1px solid #c4ccd4; border-bottom-width:2px; border-radius:5px;
+      padding:.05em .45em; font-size:.85em; font-family:inherit; white-space:nowrap;}
+  .lead{color:var(--muted); font-size:1.05rem;}
+
+  /* ── Hero ── */
+  .hero{display:flex; align-items:center; gap:18px; margin-bottom:.6em;}
+  .logo{width:72px; height:72px; flex:none;}
+  .product{font-size:.82rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+           color:var(--accent); margin:0 0 .1em;}
+
+  /* ── Callouts ── */
+  .callout{border-left:4px solid var(--line); background:#f7f9fb; padding:12px 16px;
+           border-radius:0 8px 8px 0; margin:1.1em 0;}
+  .callout.warn{border-color:var(--warn-line); background:var(--warn-bg);}
+  .callout.info{border-color:var(--info-line); background:var(--info-bg);}
+  .callout strong{color:var(--ink);}
+  .callout p:first-child{margin-top:0;}
+  .callout p:last-child{margin-bottom:0;}
+
+  /* ── Downloads ── */
+  .dl-btn{display:inline-block; background:var(--accent); color:#fff; text-decoration:none;
+      font-weight:600; padding:13px 26px; border-radius:10px; margin:.4em 0;
+      transition:background .15s, box-shadow .15s;}
+  .dl-btn:hover,.dl-btn:focus-visible{background:var(--accent-dark);
+      box-shadow:0 0 0 3px rgba(45,91,255,.22); outline:none;}
+  .dl-note{color:var(--muted); font-size:.88rem; margin:.3em 0 0;}
+
+  /* ── Steps ── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:0;}
+  ol.steps > li{counter-increment:step; position:relative; padding:4px 0 18px 52px; margin:0;}
+  ol.steps > li::before{
+    content:counter(step); position:absolute; left:0; top:0;
+    width:34px; height:34px; border-radius:50%; background:var(--accent); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:600;
+  }
+  ol.steps > li h3{margin-top:.1em;}
+
+  /* ── Tables ── */
+  table{border-collapse:collapse; width:100%; margin:1em 0; font-size:.95rem;}
+  .tscroll{overflow-x:auto; margin:1em 0; -webkit-overflow-scrolling:touch;}
+  .tscroll > table{margin:0;}
+  th,td{border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top;}
+  th{background:var(--accent-soft);}
+  td code{white-space:nowrap;}
+
+  footer{margin-top:40px; color:var(--muted); font-size:.85rem; border-top:1px solid var(--line); padding-top:14px;}
+  footer a{color:var(--accent);}
+
+  /* ── Tabs (pure CSS, no JS) ── */
+  .tab-radio{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;}
+  .tabs{display:flex; gap:4px; flex-wrap:wrap; border-bottom:2px solid var(--line); margin:2.2em 0 0;}
+  .tab-btn{font-weight:600; color:var(--muted); padding:10px 16px; cursor:pointer; user-select:none;
+    border-radius:8px 8px 0 0; border-bottom:3px solid transparent; margin-bottom:-2px;}
+  .tab-btn:hover{color:var(--ink);}
+  #rt-phone:checked ~ .tabs .tab-btn[for="rt-phone"],
+  #rt-prepare:checked ~ .tabs .tab-btn[for="rt-prepare"]{
+    color:var(--accent); border-bottom-color:var(--accent); background:var(--accent-soft);}
+  #rt-phone:focus-visible ~ .tabs .tab-btn[for="rt-phone"],
+  #rt-prepare:focus-visible ~ .tabs .tab-btn[for="rt-prepare"]{outline:2px solid var(--accent); outline-offset:2px;}
+  .tab-panel{padding-top:.4em;}
+  .tab-panel > h2:first-child{margin-top:1em; border-top:0;}
+  #panel-phone, #panel-prepare{display:none;}
+  #rt-phone:checked ~ #panel-phone{display:block;}
+  #rt-prepare:checked ~ #panel-prepare{display:block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#2D5BFF"/>
+          <stop offset="100%" stop-color="#7A3BFF"/>
+        </linearGradient>
+      </defs>
+      <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+      <g transform="translate(210,220)">
+        <rect x="0" y="0" width="380" height="540" rx="28" fill="#FFFFFF" opacity="0.95"/>
+        <rect x="18" y="24" width="344" height="492" rx="14" fill="#F2F4FF"/>
+        <path d="M310 24 L360 24 L360 220 L335 200 L310 220 Z" fill="#FF3D71"/>
+        <rect x="180" y="120" width="16" height="180" fill="#D7DBFF"/>
+        <rect x="132" y="168" width="112" height="16" fill="#D7DBFF"/>
+      </g>
+      <g transform="translate(520,330)">
+        <circle cx="192" cy="192" r="160" fill="#111827" opacity="0.85"/>
+        <polygon points="160,120 160,264 284,192" fill="#FFFFFF"/>
+      </g>
+    </svg>
+    <div>
+      <p class="product">Scripture Media Player</p>
+      <h1>Listening to trial scripture media</h1>
+    </div>
+  </header>
+
+  <p class="lead">A player for scripture audio and video that has <strong>not yet been consultant-approved</strong>.
+  Someone sends you a bundle file; it plays only on your device, only for the number of plays they set.
+  No internet connection is needed to listen.</p>
+
+  <div class="callout info">
+    <p><strong>Is this content ready to share?</strong> No. Trial content is under review. Please don't
+    copy it, forward it, post it, or play it for a wider group than the person who sent it intended.
+    The limits in the app are a reminder, not a substitute for that trust.</p>
+  </div>
+
+  <h2>Download</h2>
+
+  <p>The player runs on Android phones and tablets, and on Windows and Linux computers.
+  Every platform reads the same <code>.smbundle</code> files.</p>
+
+  <p>
+    <a class="dl-btn" href="https://github.com/rulingAnts/scripture_media_trial_content_app/releases">Go to the downloads page</a>
+  </p>
+  <p class="dl-note">Open the most recent release and pick the file that matches your device.</p>
+
+  <div class="tscroll"><table>
+    <tr><th>Your device</th><th>File to download</th></tr>
+    <tr><td>Android phone or tablet (Android 7.0 or newer)</td>
+        <td><code>…_android.apk</code></td></tr>
+    <tr><td>Windows PC (64-bit)</td>
+        <td><code>…_windows_x64.msi</code></td></tr>
+    <tr><td>Linux — Debian, Ubuntu, Linux Mint</td>
+        <td><code>…_linux_amd64.deb</code> (or <code>…_linux_arm64.deb</code> on a Raspberry Pi or ARM machine)</td></tr>
+    <tr><td>Linux — Fedora, openSUSE, RHEL</td>
+        <td><code>…_linux_x86_64.rpm</code> (or <code>…_linux_aarch64.rpm</code>)</td></tr>
+    <tr><td>Mac</td>
+        <td>Not part of every release — ask and a build can be provided.</td></tr>
+  </table></div>
+
+  <div class="callout info">
+    <p><strong>Pre-release builds.</strong> Releases marked <em>Pre-release</em> are for testing. They work,
+    but please report anything odd rather than passing them on — and expect to uninstall before
+    installing the next one on Android.</p>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>Your phone will warn you before installing.</strong> This app isn't distributed through the
+    Google Play Store, so Android asks you to confirm that you trust the file. Tap the downloaded
+    <code>.apk</code>, and when Android says it can't install unknown apps, choose
+    <strong>Settings</strong> → turn on <strong>Allow from this source</strong> → <kbd>Back</kbd> →
+    <strong>Install</strong>. You only do this once.</p>
+  </div>
+
+  <input type="radio" name="tabs" id="rt-phone" class="tab-radio" checked>
+  <input type="radio" name="tabs" id="rt-prepare" class="tab-radio">
+  <nav class="tabs" aria-label="Guide sections">
+    <label class="tab-btn" id="tab-phone" for="rt-phone">Playing on your device</label>
+    <label class="tab-btn" id="tab-prepare" for="rt-prepare">Preparing content to send</label>
+  </nav>
+
+  <!-- ═══════════════ Tab 1: recipients ═══════════════ -->
+  <section class="tab-panel" id="panel-phone" role="tabpanel" aria-labelledby="tab-phone">
+
+  <h2>Getting started</h2>
+
+  <ol class="steps">
+    <li>
+      <h3>Install the app</h3>
+      <p>Download it from the buttons above and install. Nothing happens on first launch except that
+      the app shows you your <strong>device ID</strong> — a short code that identifies this one device.</p>
+    </li>
+    <li>
+      <h3>Send your device ID to whoever is preparing the content</h3>
+      <p>Open the app and tap the <strong>copy</strong> or <strong>share</strong> button next to the device ID.
+      Send it to them however you normally message them. They need it before they can build your bundle —
+      the content is locked to the specific devices they list.</p>
+      <div class="callout">
+        <p>The device ID isn't secret and doesn't identify you personally. It's just a number your device
+        already reports. It changes if the device is factory-reset — if that happens, send the new one.</p>
+      </div>
+    </li>
+    <li>
+      <h3>Receive the <code>.smbundle</code> file</h3>
+      <p>They'll send you a file ending in <code>.smbundle</code> — by WhatsApp, email, a memory card,
+      a USB cable, or whatever works where you are. Save it to your device.</p>
+    </li>
+    <li>
+      <h3>Open it</h3>
+      <p>Tap the file in your file manager or in the chat app, and choose <strong>Scripture Media Player</strong>.
+      The app checks that the bundle is meant for your device, unpacks it, and shows the playlist.
+      This can take a minute for a large bundle.</p>
+      <p>On a computer, double-click the <code>.smbundle</code> file, or open the app and use
+      <strong>Load bundle</strong>.</p>
+    </li>
+    <li>
+      <h3>Listen or watch</h3>
+      <p>Tap any item to play. Turn the phone sideways during a video to go full-screen.
+      The app remembers where you stopped and picks up there next time.</p>
+    </li>
+  </ol>
+
+  <h2>About the play limits</h2>
+
+  <p>The person who built your bundle chooses the limits. Depending on what they set, you may see:</p>
+
+  <div class="tscroll"><table>
+    <tr><th>What you'll see</th><th>What it means</th></tr>
+    <tr><td>A play count on each item</td>
+        <td>Each item can be played a set number of times before it pauses for a while.</td></tr>
+    <tr><td>“Available again in …”</td>
+        <td>The limit for that item is used up for now. It comes back on its own after the reset period —
+        often a day. You don't need to do anything.</td></tr>
+    <tr><td>“Please wait before playing again”</td>
+        <td>A required gap between plays, so material is heard attentively rather than left looping.</td></tr>
+    <tr><td>A limited number of items per session</td>
+        <td>You can move through only so many different items in one sitting.</td></tr>
+    <tr><td>“This bundle has expired”</td>
+        <td>The bundle reached its end date, or its lifetime play limit. Ask for a new bundle.</td></tr>
+  </table></div>
+
+  <div class="callout">
+    <p>A video that shows its first frame but won't play is almost always a limit that's been reached
+    or a bundle that's expired — not a broken file. Check the message under the player.</p>
+  </div>
+
+  <h2>Getting a new bundle later</h2>
+
+  <p>When new material is ready, they'll send a newer <code>.smbundle</code>. Open it the same way.
+  The new bundle replaces the old one, and the old content is removed from your device.</p>
+
+  <div class="callout warn">
+    <p><strong>You can't go back to a bundle you've already finished with.</strong> Once you move to a
+    newer bundle, re-opening an older one is refused. This is deliberate — it stops play limits from
+    being reset by reloading an old file. If you need old material again, ask for a fresh bundle of it.</p>
+  </div>
+
+  <h2>If something goes wrong</h2>
+
+  <div class="tscroll"><table>
+    <tr><th>Message</th><th>What to do</th></tr>
+    <tr><td>“This device is not authorized”</td>
+        <td>The bundle was built for other devices, or your device ID changed (usually a factory reset).
+        Send your current device ID and ask for a rebuilt bundle.</td></tr>
+    <tr><td>“This bundle was previously used”</td>
+        <td>You've already moved on to a newer bundle. Ask for a fresh one.</td></tr>
+    <tr><td>“Insufficient storage space”</td>
+        <td>Free up space and open the file again. A bundle needs roughly twice its own size free while
+        it unpacks.</td></tr>
+    <tr><td>Tapping the file doesn't offer the player</td>
+        <td>Some chat apps hand over files in a way Android doesn't recognise. Save the file to your
+        device first, then open it from the Files or My Files app.</td></tr>
+    <tr><td>Nothing plays and there's no message</td>
+        <td>Close the app fully and reopen it. If it persists, tell whoever sent the bundle — the app can
+        write an import log they can look at.</td></tr>
+  </table></div>
+
+  <div class="callout warn">
+    <p><strong>Don't uninstall the app to fix a problem.</strong> Uninstalling erases your imported content
+    and your place in it, and you'll need a new bundle. Ask first.</p>
+  </div>
+
+  </section>
+
+  <!-- ═══════════════ Tab 2: researchers ═══════════════ -->
+  <section class="tab-panel" id="panel-prepare" role="tabpanel" aria-labelledby="tab-prepare">
+
+  <h2>Preparing content to send</h2>
+
+  <p>If you're the one distributing trial material, you use the <strong>bundler</strong> — a desktop
+  application that packs your audio and video into a single <code>.smbundle</code> file, locked to the
+  devices you name and carrying the limits you choose.</p>
+
+  <ol class="steps">
+    <li>
+      <h3>Collect device IDs</h3>
+      <p>Ask each person to install the player and send you the device ID it shows them. Bundles are
+      built for a specific list of devices; a device that isn't on the list can't open the file.</p>
+    </li>
+    <li>
+      <h3>Add your media</h3>
+      <p>MP3, WAV, and M4A for audio; MP4, WebM, AVI, and MOV for video. Order them the way you want
+      them to appear in the playlist.</p>
+    </li>
+    <li>
+      <h3>Choose the limits</h3>
+      <p>Plays per item per period, and how long that period is. Optionally: a required gap between
+      plays, a lifetime cap, a bundle expiry date, and limits on how many items can be worked through
+      in one session.</p>
+      <div class="callout">
+        <p>Set these deliberately for the first bundle you send someone. Limits that are too tight get
+        read as a broken app — the most common support question is a video that won't play, which is
+        nearly always a limit doing its job.</p>
+      </div>
+    </li>
+    <li>
+      <h3>Build and send</h3>
+      <p>The bundler writes one <code>.smbundle</code> file. Send it however suits your context —
+      messaging app, email, memory card, or USB. It carries its own protection, so the delivery channel
+      doesn't need to be a secure one.</p>
+    </li>
+  </ol>
+
+  <h2>What the protection does and doesn't do</h2>
+
+  <p>Be honest with reviewers about this, so the limits are understood as a shared agreement rather
+  than a lock.</p>
+
+  <div class="tscroll"><table>
+    <tr><th>Protects against</th><th>Does not protect against</th></tr>
+    <tr>
+      <td>
+        Forwarding the bundle to someone else — it won't open on an unlisted device.<br><br>
+        Casual copying of media off the device.<br><br>
+        Resetting limits by reloading an older bundle.<br><br>
+        Unlimited listening — plays are counted and capped.
+      </td>
+      <td>
+        Screen or audio recording while it plays.<br><br>
+        A rooted or jailbroken device.<br><br>
+        Changing the device clock to move a reset along.<br><br>
+        Someone handing their authorized device to another person.
+      </td>
+    </tr>
+  </table></div>
+
+  <div class="callout info">
+    <p>Full detail on the security model, including the encryption and device-binding scheme, is in
+    <a href="https://github.com/rulingAnts/scripture_media_trial_content_app/blob/main/TECHNICAL.md">TECHNICAL.md</a>
+    in the project repository.</p>
+  </div>
+
+  <h2>Documentation</h2>
+
+  <ul>
+    <li><a href="https://github.com/rulingAnts/scripture_media_trial_content_app/blob/main/GETTING_STARTED.md">Getting Started</a> — installing the bundler and building your first bundle</li>
+    <li><a href="https://github.com/rulingAnts/scripture_media_trial_content_app/blob/main/USER_GUIDE.md">User Guide</a> — every option in the bundler and the player</li>
+    <li><a href="https://github.com/rulingAnts/scripture_media_trial_content_app/blob/main/TECHNICAL.md">Technical Reference</a> — bundle format, encryption, limit enforcement</li>
+    <li><a href="https://github.com/rulingAnts/scripture_media_trial_content_app/blob/main/CHANGELOG.md">Changelog</a> — what changed in each version</li>
+  </ul>
+
+  </section>
+
+  <footer>
+    Scripture Media Player — free, open-source software
+    (<a href="https://github.com/rulingAnts/scripture_media_trial_content_app/blob/main/LICENSE">AGPL-3.0</a>).
+    Source and issue tracker on
+    <a href="https://github.com/rulingAnts/scripture_media_trial_content_app">GitHub</a>.
+    &copy; 2026 Seth Johnston.
+  </footer>
+
+</div>
+</body>
+</html>
