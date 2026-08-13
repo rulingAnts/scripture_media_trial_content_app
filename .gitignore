@@ -179,7 +179,13 @@ desktop-app/dist
 **/gradlew
 **/gradlew.bat
 **/gradle/wrapper/gradle-wrapper.jar
-**/gradle/wrapper/gradle-wrapper.properties
+# gradle-wrapper.properties IS tracked — it is the only thing pinning our Gradle
+# version. Flutter's injectGradleWrapperIfNeeded writes this file only when it is
+# absent, so while it was ignored every build silently inherited whatever Gradle
+# the Flutter SDK cache happened to ship (8.11.1), and the v1.4.0 Android build
+# broke the moment Flutter began requiring 8.14.0+. The gradlew scripts and the
+# wrapper .jar stay ignored deliberately: no binaries in the repo.
+!**/gradle/wrapper/gradle-wrapper.properties
 **/outputs/
 
 # Flutter (mobile_app)
