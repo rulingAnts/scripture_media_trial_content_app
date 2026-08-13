@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
@@ -21,13 +22,17 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Force consistent JVM targets for all Kotlin and Java compilation tasks across subprojects
+// Force consistent JVM targets for all Kotlin and Java compilation tasks across subprojects.
+// Kotlin 2.2 removed the kotlinOptions DSL — it is a hard error, not a warning — so this
+// uses compilerOptions. See https://kotl.in/u1r8ln
 subprojects {
     tasks.withType<KotlinCompile>().configureEach {
-        kotlinOptions {
+        compilerOptions {
             // Some older plugins (e.g. receive_sharing_intent) still compile Java at 1.8.
             // Align Kotlin per-module to avoid mismatches with their JavaCompile tasks.
-            jvmTarget = if (project.name == "receive_sharing_intent") "1.8" else "17"
+            jvmTarget.set(
+                if (project.name == "receive_sharing_intent") JvmTarget.JVM_1_8 else JvmTarget.JVM_17
+            )
         }
     }
 }
