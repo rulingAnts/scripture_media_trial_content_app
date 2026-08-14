@@ -25,14 +25,26 @@ Marked as a **pre-release**: the Android APK is debug-signed and intended for te
   tag releases, and tag releases are published as pre-releases.
 
 ### Fixed
-- Android build: pinned the Gradle wrapper to 8.14.3 by committing
-  `mobile_app/android/gradle/wrapper/gradle-wrapper.properties`. No wrapper was tracked,
-  so Flutter injected one from its SDK cache (Gradle 8.11.1) and the Android build broke
-  outright once Flutter began requiring Gradle 8.14.0+.
-- CI: release workflows pin Flutter to 3.47.0 instead of tracking `stable`. Stable moved
-  3.35.6 → 3.47.0 between these workflows being written and the v1.4.0 tag being pushed,
-  which is what broke the Android build at tag time. The macOS test workflow still tracks
-  `stable` deliberately, as an early warning for upstream changes.
+Restoring the Android build after Flutter stable moved 3.35.6 → 3.47.0. The three
+"will soon be dropped" warnings Flutter printed in June had all become hard errors,
+and each one only surfaced after the previous was cleared:
+
+- **Gradle pinned to 8.14.3.** `mobile_app/android/gradle/wrapper/gradle-wrapper.properties`
+  is now tracked — the root `.gitignore` was excluding it, so *nothing in the repo pinned
+  the Gradle version*. Flutter writes that file only when absent, so every build silently
+  inherited whatever Gradle its SDK cache shipped (8.11.1). The build broke the moment
+  Flutter's floor rose to 8.14.0. The `gradlew` scripts and wrapper `.jar` stay untracked.
+- **AGP 8.9.1 → 8.11.1** and **Kotlin 2.1.0 → 2.2.20**, both now Flutter minimums.
+- **`kotlinOptions` → `compilerOptions`.** Kotlin 2.2 removed the old DSL outright, so
+  raising Kotlin broke the Gradle scripts themselves. Migrated in both
+  `android/build.gradle.kts` and `android/app/build.gradle.kts`; JVM targets are unchanged
+  (17 everywhere, `receive_sharing_intent` held at 1.8 to match its own JavaCompile tasks).
+- **CI pins Flutter to 3.47.0** rather than tracking `stable`, so a release can no longer
+  be broken by an upstream version moving between a workflow being written and a tag being
+  pushed. The macOS test workflow still tracks `stable` deliberately, as an early warning.
+
+Flutter now warns that Gradle 8.14.3 will itself be dropped in favour of 9.1.0+. That is
+still a warning; moving to Gradle 9 also means moving off AGP 8.x, so it is deferred.
 
 ### Known issues
 - **The Android APK is debug-signed.** CI generates a fresh debug keystore per run, so
