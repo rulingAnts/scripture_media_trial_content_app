@@ -16,14 +16,14 @@
     "@scripture-media/shared": "file:../shared",
     "crypto-js": "^4.2.0",
     "node-stream-zip": "^1.15.0",
-    "tar": "^6.2.0",
-    "uuid": "^9.0.0"
+    "tar": "^7.5.22",
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
-    "electron": "^38.3.0",
-    "electron-builder": "^24.0.0",
-    "icon-gen": "^3.0.1",
-    "sharp": "^0.33.5"
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
+    "icon-gen": "^5.0.0",
+    "sharp": "^0.35.0"
   },
   "build": {
     "appId": "com.scripture.media.bundler",
